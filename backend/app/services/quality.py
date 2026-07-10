@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import pandas as pd
 
@@ -9,17 +10,27 @@ WEIGHTS = {
 }
 
 
+def _safe_round(val, n=2):
+    try:
+        v = float(val)
+        if math.isnan(v) or math.isinf(v):
+            return 0.0
+        return round(v, n)
+    except Exception:
+        return 0.0
+
+
 def completeness_score(df: pd.DataFrame) -> dict:
     total   = df.shape[0] * df.shape[1]
     missing = int(df.isnull().sum().sum())
-    score   = round((total - missing) / total * 100, 2)
+    score   = _safe_round((total - missing) / total * 100) if total else 100.0
     return {"score": score, "total_cells": total, "missing_cells": missing}
 
 
 def uniqueness_score(df: pd.DataFrame) -> dict:
     total  = len(df)
     dupes  = int(df.duplicated().sum())
-    score  = round((total - dupes) / total * 100, 2)
+    score  = _safe_round((total - dupes) / total * 100) if total else 100.0
     return {"score": score, "total_rows": total, "duplicate_rows": dupes}
 
 
@@ -49,7 +60,7 @@ def validity_score(df: pd.DataFrame) -> dict:
             invalid_mask |= col_mask
 
     invalid_rows = int(invalid_mask.sum())
-    score = round((total - invalid_rows) / total * 100, 2)
+    score = _safe_round((total - invalid_rows) / total * 100) if total else 100.0
     return {
         "score":           score,
         "total_rows":      total,
@@ -84,7 +95,7 @@ def consistency_score(df: pd.DataFrame) -> dict:
             else:
                 passed += 1
 
-    score = round(passed / total * 100, 2) if total > 0 else 100.0
+    score = _safe_round(passed / total * 100) if total > 0 else 100.0
     return {
         "score":         score,
         "total_checks":  total,
