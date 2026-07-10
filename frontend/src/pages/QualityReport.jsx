@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 
+const scoreColor = (s) => s >= 90 ? "var(--green)" : s >= 75 ? "var(--accent)" : s >= 60 ? "var(--yellow)" : "var(--red)";
+const scoreBarClass = (s) => s >= 90 ? "progress-green" : s >= 75 ? "progress-blue" : s >= 60 ? "progress-yellow" : "progress-red";
+
 export default function QualityReport() {
   const navigate  = useNavigate();
   const filename  = localStorage.getItem("uploadedFile");
@@ -10,45 +13,33 @@ export default function QualityReport() {
   const [error,   setError]   = useState("");
 
   useEffect(() => {
-    if (!filename) { setError("No file uploaded yet."); return; }
-    fetchQuality();
+    if (!filename) { setError("No file uploaded."); return; }
+    load();
   }, []);
 
-  const fetchQuality = async () => {
+  const load = async () => {
     setLoading(true);
     setError("");
     try {
       const res = await API.get(`/quality/${filename}`);
       setData(res.data);
     } catch (e) {
-      setError(e.response?.data?.detail || e.message || "Failed to load quality scores.");
+      setError(e.response?.data?.detail || e.message || "Failed to load quality data.");
     } finally {
       setLoading(false);
     }
   };
 
-  const scoreColor = (s) => {
-    if (s >= 90) return "#2ecc71";
-    if (s >= 75) return "#7b8cff";
-    if (s >= 60) return "#f0c040";
-    return "#ff4d6d";
-  };
-
-  const handleDownload = (type) => {
+  const download = (type) => {
     const base = filename.replace(".csv", "");
-    const urls = {
-      pdf:  `http://localhost:8000/report/download/pdf/${filename}`,
-      json: `http://localhost:8000/report/download/json/${filename}`,
-      csv:  `http://localhost:8000/report/download/csv/${filename}`,
-    };
-    const names = {
-      pdf:  `${base}_report.pdf`,
-      json: `${base}_summary.json`,
-      csv:  `${base}_cleaned.csv`,
+    const map  = {
+      pdf:  { url: `/report/download/pdf/${filename}`,  name: `${base}_report.pdf` },
+      json: { url: `/report/download/json/${filename}`, name: `${base}_summary.json` },
+      csv:  { url: `/report/download/csv/${filename}`,  name: `${base}_cleaned.csv` },
     };
     const a = document.createElement("a");
-    a.href     = urls[type];
-    a.download = names[type];
+    a.href     = `http://localhost:8000${map[type].url}`;
+    a.download = map[type].name;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -57,206 +48,194 @@ export default function QualityReport() {
   if (!filename) {
     return (
       <div>
-        <h1>Quality Report</h1>
-        <div className="alert alert-error mt2">
+        <div className="page-header"><h1>Quality Report</h1></div>
+        <div className="alert alert-error">
           No file uploaded.{" "}
-          <span style={{ color: "#7b8cff", cursor: "pointer" }}
-                onClick={() => navigate("/upload")}>Go to Upload →</span>
+          <span className="text-accent" style={{ cursor: "pointer" }} onClick={() => navigate("/upload")}>Upload a file first.</span>
         </div>
       </div>
     );
   }
 
+  const metrics = [
+    { key: "completeness", label: "Completeness", weight: "30%", desc: "Cells with non-null values" },
+    { key: "uniqueness",   label: "Uniqueness",   weight: "25%", desc: "Rows without duplicates" },
+    { key: "validity",     label: "Validity",     weight: "25%", desc: "Values within expected ranges" },
+    { key: "consistency",  label: "Consistency",  weight: "20%", desc: "Uniform column data types" },
+  ];
+
   return (
     <div>
-      <h1>Quality Report</h1>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
-        <p style={{ margin: 0 }}>File: <strong style={{ color: "#7b8cff" }}>{filename}</strong></p>
-        <button className="btn btn-secondary"
-                style={{ padding: "0.4rem 1rem", fontSize: "0.85rem" }}
-                onClick={fetchQuality}>🔄 Refresh</button>
+      <div className="page-header">
+        <div className="page-header-row">
+          <div>
+            <h1>Quality Report</h1>
+            <p>Data quality scores for <strong style={{ color: "var(--accent)" }}>{filename}</strong></p>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={load} disabled={loading}>Refresh</button>
+        </div>
       </div>
 
-      {loading && (
-        <div className="loading mt2" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "2rem" }}>📊</div>
-          <p>Calculating quality scores...</p>
-        </div>
-      )}
-
-      {error && <div className="alert alert-error mt2">{error}</div>}
+      {loading && <div className="loading-state">Calculating quality scores...</div>}
+      {error   && <div className="alert alert-error">{error}</div>}
 
       {data && !loading && (() => {
-        const before = data.before;
-        const after  = data.after;
+        const before   = data.before;
+        const after    = data.after;
         const hasAfter = !!after;
 
         return (
           <>
-            {/* Overall scores */}
-            <div className={`mt2 ${hasAfter ? "grid2" : ""}`}>
-              <div className="stat-card">
-                <h3>Before Repair</h3>
-                <div className="value" style={{ color: scoreColor(before.overall_score) }}>
+            {/* Overall score */}
+            <div className={`grid2 mb2`} style={{ gap: "1rem" }}>
+              <div className="card">
+                <div className="section-title mb1">Before Preprocessing</div>
+                <div style={{ fontSize: "3rem", fontWeight: 700, color: scoreColor(before.overall_score), lineHeight: 1 }}>
                   {before.overall_score}%
                 </div>
-                <div className="label">Grade: <strong>{before.grade}</strong></div>
-                <div className="score-bar mt1">
-                  <div className="score-fill"
-                       style={{ width: `${before.overall_score}%`,
-                                background: scoreColor(before.overall_score) }} />
+                <div className="text-muted text-sm mt1">Grade: <strong>{before.grade}</strong></div>
+                <div className="progress mt1">
+                  <div className={`progress-bar ${scoreBarClass(before.overall_score)}`}
+                       style={{ width: `${before.overall_score}%` }} />
                 </div>
-
-                {/* Individual scores */}
-                <div style={{ marginTop: "1rem" }}>
-                  {Object.entries(before.individual_scores).map(([k, v]) => (
-                    <div key={k} style={{ marginBottom: "0.6rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between",
-                                    fontSize: "0.85rem", marginBottom: "0.2rem" }}>
-                        <span style={{ textTransform: "capitalize" }}>{k}</span>
-                        <span style={{ color: scoreColor(v) }}>{v}%</span>
+                <div className="mt2">
+                  {metrics.map(({ key, label }) => {
+                    const v = before.individual_scores[key];
+                    return (
+                      <div key={key} style={{ marginBottom: "0.6rem" }}>
+                        <div className="flex-between text-xs mb1">
+                          <span className="text-muted">{label}</span>
+                          <span style={{ color: scoreColor(v) }}>{v}%</span>
+                        </div>
+                        <div className="progress">
+                          <div className={`progress-bar ${scoreBarClass(v)}`} style={{ width: `${v}%` }} />
+                        </div>
                       </div>
-                      <div className="score-bar" style={{ margin: 0 }}>
-                        <div className="score-fill"
-                             style={{ width: `${v}%`, background: scoreColor(v) }} />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
-              {hasAfter && (
-                <div className="stat-card">
-                  <h3>After Repair</h3>
-                  <div className="value" style={{ color: scoreColor(after.overall_score) }}>
+              {hasAfter ? (
+                <div className="card" style={{ borderColor: "var(--green)" }}>
+                  <div className="section-title mb1">After Preprocessing</div>
+                  <div style={{ fontSize: "3rem", fontWeight: 700, color: scoreColor(after.overall_score), lineHeight: 1 }}>
                     {after.overall_score}%
                   </div>
-                  <div className="label">Grade: <strong>{after.grade}</strong></div>
-                  <div className="score-bar mt1">
-                    <div className="score-fill"
-                         style={{ width: `${after.overall_score}%`,
-                                  background: scoreColor(after.overall_score) }} />
+                  <div className="flex-row mt1">
+                    <span className="text-muted text-sm">Grade: <strong>{after.grade}</strong></span>
+                    {data.improvement > 0 &&
+                      <span className="badge badge-green">+{data.improvement}%</span>}
                   </div>
-                  {data.improvement > 0 && (
-                    <span className="badge badge-green" style={{ marginTop: "0.5rem", display: "inline-block" }}>
-                      +{data.improvement}% improvement
-                    </span>
-                  )}
-
-                  <div style={{ marginTop: "1rem" }}>
-                    {Object.entries(after.individual_scores).map(([k, v]) => (
-                      <div key={k} style={{ marginBottom: "0.6rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between",
-                                      fontSize: "0.85rem", marginBottom: "0.2rem" }}>
-                          <span style={{ textTransform: "capitalize" }}>{k}</span>
-                          <span style={{ color: scoreColor(v) }}>{v}%</span>
-                        </div>
-                        <div className="score-bar" style={{ margin: 0 }}>
-                          <div className="score-fill"
-                               style={{ width: `${v}%`, background: scoreColor(v) }} />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="progress mt1">
+                    <div className={`progress-bar ${scoreBarClass(after.overall_score)}`}
+                         style={{ width: `${after.overall_score}%` }} />
                   </div>
+                  <div className="mt2">
+                    {metrics.map(({ key, label }) => {
+                      const v = after.individual_scores[key];
+                      return (
+                        <div key={key} style={{ marginBottom: "0.6rem" }}>
+                          <div className="flex-between text-xs mb1">
+                            <span className="text-muted">{label}</span>
+                            <span style={{ color: scoreColor(v) }}>{v}%</span>
+                          </div>
+                          <div className="progress">
+                            <div className={`progress-bar ${scoreBarClass(v)}`} style={{ width: `${v}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="card" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
+                  <p style={{ textAlign: "center" }}>Run preprocessing to see the quality improvement.</p>
+                  <button className="btn btn-primary" onClick={() => navigate("/repair")}>Run Preprocessing</button>
                 </div>
               )}
             </div>
 
-            {/* Score comparison table */}
+            {/* Breakdown table */}
             {hasAfter && (
-              <div className="mt2">
-                <h2>Score Breakdown</h2>
-                <table className="table">
-                  <thead>
-                    <tr><th>Metric</th><th>Weight</th><th>Before</th><th>After</th><th>Change</th></tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { label: "Completeness", key: "completeness", weight: "30%" },
-                      { label: "Uniqueness",   key: "uniqueness",   weight: "25%" },
-                      { label: "Validity",     key: "validity",     weight: "25%" },
-                      { label: "Consistency",  key: "consistency",  weight: "20%" },
-                    ].map(({ label, key, weight }) => {
-                      const b = before.individual_scores[key];
-                      const a = after.individual_scores[key];
-                      const diff = (a - b).toFixed(2);
-                      return (
-                        <tr key={key}>
-                          <td>{label}</td>
-                          <td><span className="badge badge-blue">{weight}</span></td>
-                          <td style={{ color: scoreColor(b) }}>{b}%</td>
-                          <td style={{ color: scoreColor(a) }}>{a}%</td>
-                          <td>
-                            <span className={`badge ${diff > 0 ? "badge-green" : diff < 0 ? "badge-red" : "badge-blue"}`}>
-                              {diff > 0 ? "+" : ""}{diff}%
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    <tr style={{ fontWeight: 700 }}>
-                      <td><strong>Overall</strong></td>
-                      <td><span className="badge badge-blue">100%</span></td>
-                      <td style={{ color: scoreColor(before.overall_score) }}>
-                        <strong>{before.overall_score}%</strong>
-                      </td>
-                      <td style={{ color: scoreColor(after.overall_score) }}>
-                        <strong>{after.overall_score}%</strong>
-                      </td>
-                      <td>
-                        <span className={`badge ${data.improvement > 0 ? "badge-green" : "badge-blue"}`}>
-                          {data.improvement > 0 ? "+" : ""}{data.improvement}%
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="section">
+                <div className="section-title">Score Breakdown</div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Metric</th><th>Weight</th><th>Description</th><th>Before</th><th>After</th><th>Change</th></tr>
+                    </thead>
+                    <tbody>
+                      {metrics.map(({ key, label, weight, desc }) => {
+                        const b    = before.individual_scores[key];
+                        const a    = after.individual_scores[key];
+                        const diff = parseFloat((a - b).toFixed(2));
+                        return (
+                          <tr key={key}>
+                            <td><strong>{label}</strong></td>
+                            <td><span className="badge badge-gray">{weight}</span></td>
+                            <td className="text-muted text-xs">{desc}</td>
+                            <td style={{ color: scoreColor(b) }}>{b}%</td>
+                            <td style={{ color: scoreColor(a) }}>{a}%</td>
+                            <td>
+                              <span className={`badge ${diff > 0 ? "badge-green" : diff < 0 ? "badge-red" : "badge-gray"}`}>
+                                {diff > 0 ? "+" : ""}{diff}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr>
+                        <td><strong>Overall</strong></td>
+                        <td><span className="badge badge-gray">100%</span></td>
+                        <td className="text-muted text-xs">Weighted average</td>
+                        <td style={{ color: scoreColor(before.overall_score) }}><strong>{before.overall_score}%</strong></td>
+                        <td style={{ color: scoreColor(after.overall_score) }}><strong>{after.overall_score}%</strong></td>
+                        <td>
+                          <span className={`badge ${data.improvement > 0 ? "badge-green" : "badge-gray"}`}>
+                            {data.improvement > 0 ? "+" : ""}{data.improvement}%
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
             {/* Downloads */}
-            <div className="stat-card mt2">
-              <h2>Downloads</h2>
-              <p style={{ marginBottom: "1rem" }}>
+            <div className="card mt1">
+              <div className="section-title mb1">Downloads</div>
+              <p className="mb2">
                 {hasAfter
-                  ? "Report and cleaned dataset are ready for download."
-                  : "Run repair first to generate the cleaned dataset and PDF report."}
+                  ? "The preprocessed dataset and quality report are ready."
+                  : "Run preprocessing first to generate the cleaned dataset and PDF report."}
               </p>
-              <div className="gap" style={{ flexWrap: "wrap" }}>
+              <div className="flex-row flex-wrap">
                 {hasAfter && (
                   <>
-                    <button className="btn btn-primary" style={{ width: "auto" }}
-                            onClick={() => handleDownload("pdf")}>
-                      📄 Download PDF Report
+                    <button className="btn btn-primary" onClick={() => download("csv")}>
+                      Download Cleaned Dataset
                     </button>
-                    <button className="btn btn-secondary"
-                            onClick={() => handleDownload("json")}>
-                      📋 Download JSON Summary
+                    <button className="btn btn-secondary" onClick={() => download("pdf")}>
+                      Download PDF Report
                     </button>
-                    <button className="btn btn-success"
-                            onClick={() => handleDownload("csv")}>
-                      📥 Download Cleaned CSV
+                    <button className="btn btn-ghost" onClick={() => download("json")}>
+                      Download JSON Summary
                     </button>
                   </>
                 )}
                 {!hasAfter && (
-                  <button className="btn btn-primary" style={{ width: "auto" }}
-                          onClick={() => navigate("/repair")}>
-                    Run Repair First →
+                  <button className="btn btn-primary" onClick={() => navigate("/repair")}>
+                    Run Preprocessing
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="gap mt2">
-              <button className="btn btn-secondary"
-                      onClick={() => navigate("/repair")}>
-                ← Back to Repair
-              </button>
-              <button className="btn btn-secondary"
-                      onClick={() => navigate("/monitoring")}>
-                View MLflow →
-              </button>
+            <div className="flex-row mt2">
+              <button className="btn btn-secondary" onClick={() => navigate("/repair")}>Back to Preprocessing</button>
+              <button className="btn btn-ghost" onClick={() => navigate("/monitoring")}>View MLflow</button>
             </div>
           </>
         );

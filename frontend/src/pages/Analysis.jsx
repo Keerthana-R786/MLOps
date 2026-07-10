@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 
+const scoreColor = (v) => v >= 90 ? "var(--green)" : v >= 60 ? "var(--yellow)" : "var(--red)";
+const safeNum = (v, d = 4) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
+
 export default function Analysis() {
   const navigate  = useNavigate();
   const filename  = localStorage.getItem("uploadedFile");
@@ -10,38 +13,32 @@ export default function Analysis() {
   const [error,   setError]   = useState("");
 
   useEffect(() => {
-    if (!filename) {
-      setError("No file uploaded yet. Please upload a dataset first.");
-      return;
-    }
-    fetchProfile();
+    if (!filename) { setError("No file uploaded yet."); return; }
+    load();
   }, []);
 
-  const fetchProfile = async () => {
+  const load = async () => {
     setLoading(true);
     setError("");
     try {
       const res = await API.get(`/profile/${filename}`);
       setData(res.data.profile);
     } catch (e) {
-      const msg = e.response?.data?.detail || e.message || "Profiling failed.";
-      setError(msg);
+      setError(e.response?.data?.detail || e.message || "Profiling failed.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Score bar helper ──────────────────────────────────────────────────────
-  const pct = (val, total) => total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-
   if (!filename) {
     return (
       <div>
-        <h1>Dataset Analysis</h1>
-        <div className="alert alert-error mt2">
-          No file uploaded yet.{" "}
-          <span style={{ color: "#7b8cff", cursor: "pointer" }}
-                onClick={() => navigate("/upload")}>Go to Upload →</span>
+        <div className="page-header"><h1>Analysis</h1></div>
+        <div className="alert alert-error">
+          No file uploaded.{" "}
+          <span className="text-accent" style={{ cursor: "pointer" }} onClick={() => navigate("/upload")}>
+            Upload a file to continue.
+          </span>
         </div>
       </div>
     );
@@ -49,152 +46,140 @@ export default function Analysis() {
 
   return (
     <div>
-      <h1>Dataset Analysis</h1>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
-        <p style={{ margin: 0 }}>
-          File: <strong style={{ color: "#7b8cff" }}>{filename}</strong>
-        </p>
-        <button className="btn btn-secondary" style={{ padding: "0.4rem 1rem", fontSize: "0.85rem" }}
-                onClick={fetchProfile}>
-          🔄 Refresh
-        </button>
+      <div className="page-header">
+        <div className="page-header-row">
+          <div>
+            <h1>Analysis</h1>
+            <p>Statistical profile of <strong style={{ color: "var(--accent)" }}>{filename}</strong></p>
+          </div>
+          <div className="flex-row">
+            <button className="btn btn-secondary btn-sm" onClick={load} disabled={loading}>
+              Refresh
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate("/repair")}>
+              Run Preprocessing
+            </button>
+          </div>
+        </div>
       </div>
 
-      {loading && (
-        <div className="loading" style={{ padding: "3rem", textAlign: "center" }}>
-          <div style={{ fontSize: "2rem" }}>🔍</div>
-          <p>Profiling dataset...</p>
-        </div>
-      )}
-
+      {loading && <div className="loading-state">Loading profile...</div>}
       {error && (
-        <div className="alert alert-error mt2">
+        <div className="alert alert-error">
           {error}
           <div className="mt1">
-            <button className="btn btn-secondary" style={{ width: "auto" }}
-                    onClick={() => navigate("/upload")}>← Back to Upload</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate("/upload")}>Back to Upload</button>
           </div>
         </div>
       )}
 
       {data && !loading && (() => {
-        const basic   = data.basic_info;
-        const missing = data.missing_values;
-        const dupes   = data.duplicates;
-        const numStats = data.numerical_stats || {};
-        const catStats = data.categorical_stats || {};
-        const corr     = data.correlation_matrix || {};
+        const b  = data.basic_info;
+        const mv = data.missing_values;
+        const d  = data.duplicates;
+        const ns = data.numerical_stats   || {};
+        const cs = data.categorical_stats || {};
+        const cr = data.correlation_matrix || {};
 
         return (
           <>
-            {/* ── Overview cards ─────────────────────────────────────── */}
-            <div className="grid3 mt2">
+            {/* Overview */}
+            <div className="stat-grid">
               <div className="stat-card">
-                <div className="value">{basic.rows.toLocaleString()}</div>
-                <div className="label">Total Rows</div>
+                <div className="stat-value">{b.rows.toLocaleString()}</div>
+                <div className="stat-label">Rows</div>
               </div>
               <div className="stat-card">
-                <div className="value">{basic.columns}</div>
-                <div className="label">Total Columns</div>
+                <div className="stat-value">{b.columns}</div>
+                <div className="stat-label">Columns</div>
               </div>
               <div className="stat-card">
-                <div className="value">{basic.memory_usage_kb} KB</div>
-                <div className="label">Memory Usage</div>
+                <div className="stat-value">{b.numerical_columns.length}</div>
+                <div className="stat-label">Numerical</div>
               </div>
               <div className="stat-card">
-                <div className="value" style={{ color: missing.total_missing > 0 ? "#f0c040" : "#2ecc71" }}>
-                  {missing.total_missing.toLocaleString()}
+                <div className="stat-value">{b.categorical_columns.length}</div>
+                <div className="stat-label">Categorical</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value" style={{ color: mv.total_missing > 0 ? "var(--yellow)" : "var(--green)" }}>
+                  {mv.total_missing.toLocaleString()}
                 </div>
-                <div className="label">Missing Values ({missing.total_missing_percent}%)</div>
+                <div className="stat-label">Missing Values</div>
+                <div className="stat-sub">{mv.total_missing_percent}% of cells</div>
               </div>
               <div className="stat-card">
-                <div className="value" style={{ color: dupes.duplicate_rows > 0 ? "#f0c040" : "#2ecc71" }}>
-                  {dupes.duplicate_rows.toLocaleString()}
+                <div className="stat-value" style={{ color: d.duplicate_rows > 0 ? "var(--yellow)" : "var(--green)" }}>
+                  {d.duplicate_rows.toLocaleString()}
                 </div>
-                <div className="label">Duplicate Rows ({dupes.duplicate_percent}%)</div>
+                <div className="stat-label">Duplicate Rows</div>
+                <div className="stat-sub">{d.duplicate_percent}% of rows</div>
               </div>
               <div className="stat-card">
-                <div className="value">{basic.numerical_columns.length} / {basic.categorical_columns.length}</div>
-                <div className="label">Numerical / Categorical</div>
+                <div className="stat-value">{b.memory_usage_kb}</div>
+                <div className="stat-label">Memory (KB)</div>
               </div>
             </div>
 
-            {/* ── Column type badges ─────────────────────────────────── */}
-            <div className="grid2 mt2">
-              <div className="stat-card">
-                <h3>Numerical Columns</h3>
-                <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {basic.numerical_columns.length > 0
-                    ? basic.numerical_columns.map(c =>
-                        <span key={c} className="badge badge-blue">{c}</span>)
-                    : <span style={{ color: "#aaa" }}>None</span>}
-                </div>
-              </div>
-              <div className="stat-card">
-                <h3>Categorical Columns</h3>
-                <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {basic.categorical_columns.length > 0
-                    ? basic.categorical_columns.map(c =>
-                        <span key={c} className="badge badge-yellow">{c}</span>)
-                    : <span style={{ color: "#aaa" }}>None</span>}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Missing value breakdown ───────────────────────────── */}
-            <div className="stat-card mt2">
-              <h3>Missing Values per Column</h3>
-              <table className="table" style={{ marginTop: "0.5rem" }}>
-                <thead>
-                  <tr><th>Column</th><th>Type</th><th>Missing</th><th>%</th><th>Visual</th></tr>
-                </thead>
-                <tbody>
-                  {Object.entries(missing.per_column).map(([col, v]) => (
-                    <tr key={col}>
-                      <td><strong>{col}</strong></td>
-                      <td>
-                        <span className={`badge ${basic.numerical_columns.includes(col) ? "badge-blue" : "badge-yellow"}`}>
-                          {basic.numerical_columns.includes(col) ? "num" : "cat"}
-                        </span>
-                      </td>
-                      <td>{v.missing_count}</td>
-                      <td>{v.missing_percent}%</td>
-                      <td style={{ width: "120px" }}>
-                        <div className="score-bar" style={{ margin: 0 }}>
-                          <div className="score-fill"
-                               style={{ width: `${100 - v.missing_percent}%`,
-                                        background: v.missing_percent > 0 ? "#f0c040" : "#2ecc71" }} />
-                        </div>
-                      </td>
+            {/* Column overview */}
+            <div className="section">
+              <div className="section-title">Column Overview</div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Column</th><th>Type</th><th>Dtype</th>
+                      <th>Missing</th><th>Missing %</th><th>Completeness</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Object.entries(mv.per_column).map(([col, v]) => {
+                      const isNum  = b.numerical_columns.includes(col);
+                      const fill   = 100 - v.missing_percent;
+                      const barClr = v.missing_percent === 0 ? "progress-green" : v.missing_percent < 20 ? "progress-yellow" : "progress-red";
+                      return (
+                        <tr key={col}>
+                          <td><strong>{col}</strong></td>
+                          <td><span className={`badge ${isNum ? "badge-blue" : "badge-yellow"}`}>{isNum ? "numeric" : "categorical"}</span></td>
+                          <td><code>{b.dtypes[col]}</code></td>
+                          <td>{v.missing_count}</td>
+                          <td>{v.missing_percent}%</td>
+                          <td style={{ width: 140 }}>
+                            <div className="progress">
+                              <div className={`progress-bar ${barClr}`} style={{ width: `${fill}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {/* ── Numerical Stats ───────────────────────────────────── */}
-            {Object.keys(numStats).length > 0 && (
-              <div className="mt2">
-                <h2>Numerical Statistics</h2>
-                <div style={{ overflowX: "auto" }}>
-                  <table className="table">
+            {/* Numerical stats */}
+            {Object.keys(ns).length > 0 && (
+              <div className="section">
+                <div className="section-title">Numerical Statistics</div>
+                <div className="table-wrap">
+                  <table>
                     <thead>
                       <tr>
                         <th>Column</th><th>Mean</th><th>Median</th><th>Std Dev</th>
-                        <th>Min</th><th>Max</th><th>Q1 (25%)</th><th>Q3 (75%)</th>
+                        <th>Min</th><th>Max</th><th>Q1</th><th>Q3</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(numStats).map(([col, s]) => (
+                      {Object.entries(ns).map(([col, s]) => (
                         <tr key={col}>
                           <td><strong>{col}</strong></td>
-                          <td>{Number(s.mean).toFixed(4)}</td>
-                          <td>{Number(s.median).toFixed(4)}</td>
-                          <td>{Number(s.std).toFixed(4)}</td>
-                          <td>{s.min}</td>
-                          <td>{s.max}</td>
-                          <td>{s.q1}</td>
-                          <td>{s.q3}</td>
+                          <td>{safeNum(s.mean)}</td>
+                          <td>{safeNum(s.median)}</td>
+                          <td>{safeNum(s.std)}</td>
+                          <td>{safeNum(s.min)}</td>
+                          <td>{safeNum(s.max)}</td>
+                          <td>{safeNum(s.q1)}</td>
+                          <td>{safeNum(s.q3)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -203,65 +188,63 @@ export default function Analysis() {
               </div>
             )}
 
-            {/* ── Categorical Stats ─────────────────────────────────── */}
-            {Object.keys(catStats).length > 0 && (
-              <div className="mt2">
-                <h2>Categorical Statistics</h2>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Column</th><th>Unique</th><th>Most Frequent</th>
-                      <th>Count</th><th>%</th><th>Top 5 Values</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(catStats).map(([col, s]) => (
-                      <tr key={col}>
-                        <td><strong>{col}</strong></td>
-                        <td>{s.unique_values}</td>
-                        <td><span className="badge badge-green">{s.most_frequent}</span></td>
-                        <td>{s.most_frequent_count}</td>
-                        <td>{s.most_frequent_percent}%</td>
-                        <td style={{ fontSize: "0.8rem", color: "#aaa" }}>
-                          {s.value_counts
-                            ? Object.entries(s.value_counts).slice(0, 5)
-                                .map(([k, v]) => `${k}: ${v}`).join(" | ")
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* ── Correlation Matrix ────────────────────────────────── */}
-            {Object.keys(corr).length > 0 && (
-              <div className="mt2">
-                <h2>Correlation Matrix</h2>
-                <div style={{ overflowX: "auto" }}>
-                  <table className="table">
+            {/* Categorical stats */}
+            {Object.keys(cs).length > 0 && (
+              <div className="section">
+                <div className="section-title">Categorical Statistics</div>
+                <div className="table-wrap">
+                  <table>
                     <thead>
                       <tr>
-                        <th>Column</th>
-                        {Object.keys(corr).map(c => <th key={c}>{c}</th>)}
+                        <th>Column</th><th>Unique</th><th>Most Frequent</th>
+                        <th>Count</th><th>Frequency %</th><th>Top Values</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(corr).map(([row, vals]) => (
+                      {Object.entries(cs).map(([col, s]) => (
+                        <tr key={col}>
+                          <td><strong>{col}</strong></td>
+                          <td>{s.unique_values}</td>
+                          <td><code>{s.most_frequent}</code></td>
+                          <td>{s.most_frequent_count}</td>
+                          <td>{s.most_frequent_percent}%</td>
+                          <td className="text-muted text-xs">
+                            {s.value_counts
+                              ? Object.entries(s.value_counts).slice(0, 5)
+                                  .map(([k, v]) => `${k} (${v})`).join(", ")
+                              : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Correlation */}
+            {Object.keys(cr).length > 0 && (
+              <div className="section">
+                <div className="section-title">Correlation Matrix</div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th></th>
+                        {Object.keys(cr).map((c) => <th key={c}>{c}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(cr).map(([row, vals]) => (
                         <tr key={row}>
                           <td><strong>{row}</strong></td>
                           {Object.values(vals).map((v, i) => {
+                            if (v === null) return <td key={i} className="text-muted">—</td>;
                             const abs = Math.abs(v);
-                            const bg  = v === 1
-                              ? "#1a1a3a"
-                              : abs > 0.7 ? "#2a1a1a"
-                              : abs > 0.4 ? "#1a2a1a"
-                              : "transparent";
-                            const color = abs > 0.4 ? "#fff" : "#aaa";
+                            const bg  = v === 1 ? "var(--accent-dim)" : abs > 0.7 ? "var(--red-dim)" : abs > 0.4 ? "var(--yellow-dim)" : "transparent";
                             return (
-                              <td key={i} style={{ background: bg, color, textAlign: "center", fontSize: "0.85rem" }}>
-                                {Number(v).toFixed(3)}
+                              <td key={i} style={{ background: bg, textAlign: "center", fontFamily: "var(--mono)", fontSize: "0.75rem" }}>
+                                {v.toFixed(3)}
                               </td>
                             );
                           })}
@@ -273,35 +256,12 @@ export default function Analysis() {
               </div>
             )}
 
-            {/* ── Column data types ────────────────────────────────── */}
-            <div className="stat-card mt2">
-              <h3>Column Data Types</h3>
-              <table className="table" style={{ marginTop: "0.5rem" }}>
-                <thead><tr><th>Column</th><th>Dtype</th><th>Category</th></tr></thead>
-                <tbody>
-                  {Object.entries(basic.dtypes).map(([col, dtype]) => (
-                    <tr key={col}>
-                      <td><strong>{col}</strong></td>
-                      <td><code style={{ color: "#7b8cff" }}>{dtype}</code></td>
-                      <td>
-                        <span className={`badge ${basic.numerical_columns.includes(col) ? "badge-blue" : "badge-yellow"}`}>
-                          {basic.numerical_columns.includes(col) ? "Numerical" : "Categorical"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="gap mt2">
-              <button className="btn btn-primary" style={{ width: "auto" }}
-                      onClick={() => navigate("/repair")}>
-                Run Repair →
+            <div className="flex-row mt2">
+              <button className="btn btn-primary" onClick={() => navigate("/repair")}>
+                Run Preprocessing
               </button>
-              <button className="btn btn-secondary"
-                      onClick={() => navigate("/upload")}>
-                ← Upload New File
+              <button className="btn btn-secondary" onClick={() => navigate("/upload")}>
+                Upload Different File
               </button>
             </div>
           </>

@@ -19,32 +19,30 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def generate_recommendations(profile: dict, quality_before: dict, quality_after: dict) -> list:
     recs   = []
-    before = quality_before["individual_scores"]
-    after  = quality_after["individual_scores"]
 
     if profile["missing_values"]["total_missing"] > 0:
-        recs.append(f"Missing values detected and imputed using KNN (numerical) and Most-Frequent (categorical).")
+        recs.append("Missing values were imputed using KNN (numerical) and Most-Frequent (categorical) strategies.")
     else:
-        recs.append("No missing values — dataset is complete.")
+        recs.append("No missing values detected. Dataset is complete.")
 
     if profile["duplicates"]["duplicate_rows"] > 0:
-        recs.append(f"{profile['duplicates']['duplicate_rows']} duplicate rows were removed.")
+        recs.append(f"{profile['duplicates']['duplicate_rows']} duplicate rows were removed to ensure data integrity.")
     else:
         recs.append("No duplicate rows found.")
 
-    if after["validity"] < 100:
-        recs.append("Some extreme outlier values were clipped using IQR-based bounds.")
+    if quality_after["individual_scores"]["validity"] < 100:
+        recs.append("Extreme outlier values were clipped or removed using IQR and Isolation Forest methods.")
 
     if quality_after["overall_score"] >= 90:
         recs.append("Overall data quality is Excellent. Dataset is ready for ML pipelines.")
     elif quality_after["overall_score"] >= 75:
-        recs.append("Overall data quality is Good. Dataset can be used with minor caution.")
+        recs.append("Overall data quality is Good. Dataset can be used for model training.")
     else:
-        recs.append("Data quality needs improvement. Review flagged columns before training.")
+        recs.append("Data quality needs further review. Inspect flagged columns before training.")
 
     imp = round(quality_after["overall_score"] - quality_before["overall_score"], 2)
     if imp > 0:
-        recs.append(f"Quality improved by {imp}% after repair.")
+        recs.append(f"Quality score improved by {imp}% after preprocessing.")
 
     return recs
 

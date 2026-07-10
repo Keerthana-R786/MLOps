@@ -38,13 +38,16 @@ def track_repair_run(filename, repair_log, quality_before, quality_after,
             mlflow.log_metric("missing_categorical_imputed", len(m.get("categorical_imputed", [])))
 
             d = repair_log.get("duplicates", {})
-            mlflow.log_metric("duplicates_found",    d.get("duplicates_found", 0))
+            mlflow.log_metric("duplicates_found",    d.get("duplicates_found",   d.get("duplicates_removed", 0)))
             mlflow.log_metric("duplicates_removed",  d.get("duplicates_removed", 0))
             mlflow.log_metric("rows_before",         d.get("rows_before", 0))
-            mlflow.log_metric("rows_after_dedup",    d.get("rows_after", 0))
+            mlflow.log_metric("rows_after_dedup",    d.get("rows_after",   0))
 
             o = repair_log.get("outliers", {})
-            mlflow.log_metric("outliers_detected",   o.get("outliers_detected", 0))
+            mlflow.log_metric("outliers_detected",
+                              o.get("outliers_detected",
+                              o.get("rows_removed",
+                              o.get("outliers_flagged", 0))))
 
             iv = repair_log.get("invalid_data", {})
             mlflow.log_metric("invalid_entries_fixed", iv.get("total_invalid", 0))

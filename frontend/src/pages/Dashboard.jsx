@@ -3,115 +3,127 @@ import { useNavigate } from "react-router-dom";
 import API from "../api";
 
 export default function Dashboard() {
-  const navigate  = useNavigate();
-  const [status,  setStatus]  = useState("Checking...");
-  const [online,  setOnline]  = useState(false);
+  const navigate     = useNavigate();
+  const [online,     setOnline]  = useState(null);
   const uploadedFile = localStorage.getItem("uploadedFile");
 
   useEffect(() => {
-    API.get("/")
-      .then((r) => { setStatus(r.data.message); setOnline(true); })
-      .catch(() => { setStatus("Backend not reachable at http://localhost:8000"); setOnline(false); });
+    API.get("/").then(() => setOnline(true)).catch(() => setOnline(false));
   }, []);
 
   const steps = [
-    { label: "Upload Dataset",   route: "/upload",     done: !!uploadedFile,  icon: "📤" },
-    { label: "Profile & Analyse",route: "/analysis",   done: !!uploadedFile,  icon: "🔍" },
-    { label: "Repair Dataset",   route: "/repair",     done: false,            icon: "🛠️" },
-    { label: "Quality Report",   route: "/quality",    done: false,            icon: "📊" },
+    { step: "01", label: "Upload Dataset",    desc: "Upload a CSV file to begin", route: "/upload",   done: !!uploadedFile },
+    { step: "02", label: "Analyse",           desc: "View statistical profile",    route: "/analysis", done: !!uploadedFile },
+    { step: "03", label: "Preprocess",        desc: "Clean and repair the dataset",route: "/repair",   done: false },
+    { step: "04", label: "Download Results",  desc: "Quality report and clean CSV",route: "/quality",  done: false },
   ];
 
   return (
     <div>
-      <h1>Dashboard</h1>
-      <p>Welcome to the Dataset Repair Platform.</p>
-
-      {/* Backend status */}
-      <div className={`alert ${online ? "alert-success" : "alert-error"} mt2`}>
-        {online ? "🟢" : "🔴"} {status}
+      <div className="page-header">
+        <h1>Dashboard</h1>
+        <p>Prepare your dataset for machine learning.</p>
       </div>
 
-      {/* Current file */}
+      {/* Status bar */}
+      <div className={`alert ${online === null ? "alert-info" : online ? "alert-success" : "alert-error"}`}>
+        {online === null && "Connecting to backend..."}
+        {online === true  && "Backend connected — http://localhost:8000"}
+        {online === false && "Backend not reachable. Start the server: uvicorn app.main:app --reload --host 0.0.0.0"}
+      </div>
+
       {uploadedFile && (
         <div className="alert alert-info mt1">
-          📂 Active file: <strong>{uploadedFile}</strong>
+          Active file: <strong style={{ color: "var(--accent)" }}>{uploadedFile}</strong>
+          <span className="text-muted" style={{ marginLeft: "0.5rem" }}>
+            — <span style={{ cursor: "pointer", color: "var(--accent)" }}
+                    onClick={() => { localStorage.removeItem("uploadedFile"); window.location.reload(); }}>
+                clear
+              </span>
+          </span>
         </div>
       )}
 
-      {/* Pipeline steps */}
-      <div className="mt2">
-        <h2>Pipeline</h2>
-        <div className="grid2 mt1">
-          {steps.map((s, i) => (
+      {/* Pipeline */}
+      <div className="section mt2">
+        <div className="section-title">Pipeline</div>
+        <div className="grid2" style={{ gap: "0.75rem" }}>
+          {steps.map((s) => (
             <div
-              key={s.label}
-              className="stat-card"
-              style={{ cursor: "pointer", border: `1px solid ${s.done ? "#2ecc71" : "#2a2a4a"}` }}
+              key={s.step}
+              className="card"
+              style={{ cursor: "pointer", borderColor: s.done ? "var(--green)" : "var(--border)" }}
               onClick={() => navigate(s.route)}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "1.5rem" }}>{s.icon}</span>
-                <span className={`badge ${s.done ? "badge-green" : "badge-blue"}`}>
-                  {s.done ? "Ready" : `Step ${i + 1}`}
+              <div className="flex-between mb1">
+                <span className="text-xs text-muted mono">STEP {s.step}</span>
+                <span className={`badge ${s.done ? "badge-green" : "badge-gray"}`}>
+                  {s.done ? "Ready" : "Pending"}
                 </span>
               </div>
-              <div style={{ fontWeight: 600, marginTop: "0.5rem" }}>{s.label}</div>
-              <div style={{ fontSize: "0.85rem", color: "#aaa", marginTop: "0.2rem" }}>
-                Click to open →
-              </div>
+              <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.2rem" }}>{s.label}</div>
+              <div className="text-sm text-muted">{s.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Quick start */}
-      <div className="mt2">
-        <h2>Quick Start</h2>
-        <div className="gap mt1">
-          <button className="btn btn-primary" style={{ width: "auto" }}
-                  onClick={() => navigate("/upload")}>
+      {/* Actions */}
+      <div className="section">
+        <div className="section-title">Quick Actions</div>
+        <div className="flex-row flex-wrap">
+          <button className="btn btn-primary" onClick={() => navigate("/upload")}>
             {uploadedFile ? "Upload New File" : "Upload Dataset"}
           </button>
           {uploadedFile && (
-            <button className="btn btn-secondary"
-                    onClick={() => navigate("/analysis")}>
+            <button className="btn btn-secondary" onClick={() => navigate("/analysis")}>
               View Analysis
             </button>
           )}
-          <button className="btn btn-secondary"
-                  onClick={() => navigate("/monitoring")}>
+          {uploadedFile && (
+            <button className="btn btn-secondary" onClick={() => navigate("/repair")}>
+              Run Preprocessing
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={() => navigate("/monitoring")}>
             MLflow Runs
           </button>
         </div>
       </div>
 
-      {/* API info */}
-      <div className="stat-card mt2">
-        <h3>API Endpoints</h3>
-        <table className="table" style={{ marginTop: "0.5rem" }}>
-          <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
-          <tbody>
-            {[
-              ["POST", "/upload",              "Upload & validate CSV"],
-              ["GET",  "/profile/{file}",      "Profile dataset"],
-              ["POST", "/repair/{file}",       "Run full repair pipeline"],
-              ["GET",  "/quality/{file}",      "Quality score before/after"],
-              ["POST", "/report/{file}",       "Generate PDF + JSON report"],
-              ["GET",  "/report/download/pdf", "Download PDF report"],
-              ["GET",  "/report/download/csv", "Download cleaned CSV"],
-            ].map(([m, e, d]) => (
-              <tr key={e}>
-                <td><span className={`badge ${m === "POST" ? "badge-yellow" : "badge-blue"}`}>{m}</span></td>
-                <td><code style={{ color: "#7b8cff" }}>{e}</code></td>
-                <td style={{ color: "#aaa", fontSize: "0.85rem" }}>{d}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ marginTop: "0.8rem", fontSize: "0.85rem" }}>
-          Full Swagger UI:{" "}
+      {/* Endpoints reference */}
+      <div className="section">
+        <div className="section-title">API Reference</div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              {[
+                ["POST", "/upload",               "Upload and validate a CSV file"],
+                ["GET",  "/profile/{file}",        "Statistical profiling of the dataset"],
+                ["POST", "/repair/{file}",         "Full preprocessing pipeline"],
+                ["GET",  "/quality/{file}",        "Quality score before and after"],
+                ["POST", "/report/{file}",         "Generate PDF and JSON report"],
+                ["GET",  "/report/download/pdf",   "Download PDF report"],
+                ["GET",  "/report/download/csv",   "Download cleaned dataset"],
+              ].map(([m, e, d]) => (
+                <tr key={e}>
+                  <td><span className={`badge ${m === "POST" ? "badge-yellow" : "badge-blue"}`}>{m}</span></td>
+                  <td><code>{e}</code></td>
+                  <td className="text-muted">{d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt1 text-sm">
+          Interactive docs:{" "}
           <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer"
-             style={{ color: "#7b8cff" }}>http://localhost:8000/docs</a>
+             style={{ color: "var(--accent)" }}>
+            http://localhost:8000/docs
+          </a>
         </p>
       </div>
     </div>

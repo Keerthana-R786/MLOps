@@ -1,54 +1,70 @@
 export default function Monitoring() {
   return (
     <div>
-      <h1>MLflow Monitoring</h1>
-      <p>Track all experiment runs, metrics and artifacts.</p>
-
-      <div className="alert alert-info mt2">
-        MLflow UI runs on a separate port. Start it with the command below and open in your browser.
+      <div className="page-header">
+        <h1>Monitoring</h1>
+        <p>MLflow experiment tracking for all preprocessing runs.</p>
       </div>
 
-      <div className="stat-card mt2">
-        <h3>Start MLflow UI</h3>
-        <p>Run this in your terminal from the backend folder:</p>
-        <code style={{ display: "block", background: "#0f0f1a", padding: "1rem", borderRadius: 8, color: "#7b8cff", marginTop: "0.5rem" }}>
-          venv\Scripts\activate<br />
-          mlflow ui --backend-store-uri sqlite:///mlflow.db
-        </code>
-        <p style={{ marginTop: "1rem" }}>Then open:</p>
-        <a href="http://localhost:5000" target="_blank" rel="noreferrer"
-          style={{ color: "#7b8cff" }}>http://localhost:5000</a>
+      <div className="alert alert-info mb2">
+        MLflow runs on a separate process. Start it with the command below then open the UI in your browser.
       </div>
 
-      <div className="grid2 mt2">
-        {[
-          { label: "Experiment", value: "Dataset-Repair-Pipeline" },
-          { label: "Backend Store", value: "sqlite:///mlflow.db" },
-          { label: "Tracked Metrics", value: "15+ per run" },
-          { label: "Artifacts", value: "PDF + Cleaned CSV" },
-        ].map((s) => (
-          <div className="stat-card" key={s.label}>
-            <div className="label">{s.label}</div>
-            <div style={{ color: "#7b8cff", fontWeight: 600, marginTop: "0.3rem" }}>{s.value}</div>
-          </div>
-        ))}
+      <div className="card card-md mb2">
+        <div className="section-title mb1">Start MLflow UI</div>
+        <p className="mb1">Run this in a new terminal from the backend folder:</p>
+        <div className="code-block">
+          cd backend{"\n"}
+          venv\Scripts\activate{"\n"}
+          mlflow ui --backend-store-uri sqlite:///mlflow.db --workers 1
+        </div>
+        <p className="mt1 text-sm">
+          Then open:{" "}
+          <a href="http://localhost:5000" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
+            http://localhost:5000
+          </a>
+        </p>
       </div>
 
-      <div className="mt2">
-        <h2>Logged Metrics per Run</h2>
-        <table className="table">
-          <thead><tr><th>Category</th><th>Metrics</th></tr></thead>
-          <tbody>
-            <tr><td>Missing Values</td><td>numerical_cols_imputed, categorical_cols_imputed</td></tr>
-            <tr><td>Duplicates</td><td>duplicates_found, duplicates_removed, rows_before, rows_after</td></tr>
-            <tr><td>Outliers</td><td>outliers_detected</td></tr>
-            <tr><td>Invalid Data</td><td>invalid_entries_fixed</td></tr>
-            <tr><td>Labels</td><td>label_errors_found</td></tr>
-            <tr><td>Quality Before</td><td>completeness, uniqueness, validity, consistency, overall</td></tr>
-            <tr><td>Quality After</td><td>completeness, uniqueness, validity, consistency, overall</td></tr>
-            <tr><td>Performance</td><td>quality_improvement, execution_time_seconds</td></tr>
-          </tbody>
-        </table>
+      <div className="section">
+        <div className="section-title">What Gets Tracked Per Run</div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th>Metrics / Parameters</th></tr></thead>
+            <tbody>
+              {[
+                ["Dataset",        "dataset_name, rows_before, rows_after"],
+                ["Missing Values", "numerical_imputed count, categorical_imputed count"],
+                ["Duplicates",     "duplicates_found, duplicates_removed"],
+                ["Outliers",       "outliers_detected, strategy used"],
+                ["Invalid Data",   "invalid_entries_fixed"],
+                ["Label Errors",   "label_errors_found, target_column"],
+                ["Quality Before", "completeness, uniqueness, validity, consistency, overall"],
+                ["Quality After",  "completeness, uniqueness, validity, consistency, overall"],
+                ["Performance",    "quality_improvement, execution_time_seconds"],
+                ["Artifacts",      "cleaned_dataset.csv, PDF report"],
+              ].map(([cat, items]) => (
+                <tr key={cat}>
+                  <td><strong>{cat}</strong></td>
+                  <td className="text-muted text-xs">{items}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-title">Configuration</div>
+        <div className="table-wrap">
+          <table>
+            <tbody>
+              <tr><td className="text-muted">Experiment name</td><td><code>Dataset-Repair-Pipeline</code></td></tr>
+              <tr><td className="text-muted">Backend store</td><td><code>sqlite:///mlflow.db</code></td></tr>
+              <tr><td className="text-muted">Location</td><td><code>backend/mlflow.db</code></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

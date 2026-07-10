@@ -13,32 +13,24 @@ export default function Upload() {
 
   const handleFile = (f) => {
     if (!f) return;
-    if (!f.name.endsWith(".csv")) {
-      setError("Only CSV files are allowed.");
-      setFile(null);
-      return;
-    }
+    if (!f.name.endsWith(".csv")) { setError("Only CSV files are supported."); return; }
     setFile(f);
     setError("");
     setResult(null);
   };
 
   const handleUpload = async () => {
-    if (!file) { setError("Please select a file first."); return; }
+    if (!file) { setError("Select a file first."); return; }
     setLoading(true);
     setError("");
     const form = new FormData();
     form.append("file", file);
     try {
-      const res = await API.post("/upload", form, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      const res = await API.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
       setResult(res.data);
-      // Store filename for use in subsequent pages
       localStorage.setItem("uploadedFile", res.data.filename);
     } catch (e) {
-      const msg = e.response?.data?.detail || e.message || "Upload failed.";
-      setError(msg);
+      setError(e.response?.data?.detail || e.message || "Upload failed.");
     } finally {
       setLoading(false);
     }
@@ -48,102 +40,95 @@ export default function Upload() {
 
   return (
     <div>
-      <h1>Upload Dataset</h1>
-      <p>Upload a CSV file to begin the repair pipeline.</p>
+      <div className="page-header">
+        <h1>Upload Dataset</h1>
+        <p>Upload a CSV file to begin the preprocessing pipeline.</p>
+      </div>
 
-      <div style={{ maxWidth: 700, marginTop: "1.5rem" }}>
-
+      <div style={{ maxWidth: 640 }}>
         {/* Drop zone */}
         <div
           className={`upload-zone ${dragging ? "dragging" : ""}`}
           onClick={() => fileRef.current.click()}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            handleFile(e.dataTransfer.files[0]);
-          }}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
         >
-          <div style={{ fontSize: "3rem" }}>📂</div>
+          <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
           {file ? (
             <>
-              <p style={{ color: "#7b8cff", fontWeight: 600 }}>{file.name}</p>
-              <p style={{ fontSize: "0.85rem" }}>
-                {(file.size / 1024).toFixed(1)} KB — click to change
-              </p>
+              <p style={{ color: "var(--text)", fontWeight: 500 }}>{file.name}</p>
+              <p className="text-sm mt1">{(file.size / 1024).toFixed(1)} KB — click to change</p>
             </>
           ) : (
             <>
-              <p>Drag & drop your CSV here</p>
-              <p style={{ fontSize: "0.85rem" }}>or click to browse</p>
+              <p style={{ color: "var(--text)" }}>Drop your CSV file here</p>
+              <p className="text-sm mt1">or click to browse — up to 50 MB</p>
             </>
           )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv"
-            style={{ display: "none" }}
-            onChange={(e) => handleFile(e.target.files[0])}
-          />
+          <input ref={fileRef} type="file" accept=".csv" style={{ display: "none" }}
+                 onChange={(e) => handleFile(e.target.files[0])} />
         </div>
 
         {error && <div className="alert alert-error mt1">{error}</div>}
 
         <button
-          className="btn btn-primary mt1"
+          className="btn btn-primary btn-full mt1"
           onClick={handleUpload}
           disabled={loading || !file}
-          style={{ opacity: !file ? 0.6 : 1 }}
         >
-          {loading ? "Uploading & Validating..." : "Upload & Validate"}
+          {loading ? "Uploading..." : "Upload and Validate"}
         </button>
 
-        {/* Result */}
         {result && v && (
           <div className="mt2">
             <div className={`alert ${v.status === "Valid" ? "alert-success" : "alert-error"}`}>
-              {v.status === "Valid" ? "✅ Validation Passed" : "❌ Validation Failed"}
+              {v.status === "Valid" ? "Validation passed" : "Validation failed"}
             </div>
 
-            <div className="stat-card mt1">
-              <table className="table">
-                <tbody>
-                  <tr><td>Filename</td><td><strong>{result.filename}</strong></td></tr>
-                  <tr><td>Rows</td><td>{v.rows?.toLocaleString()}</td></tr>
-                  <tr><td>Columns</td><td>{v.columns}</td></tr>
-                  <tr><td>Column Names</td>
-                      <td style={{ fontSize: "0.85rem", color: "#aaa" }}>
-                        {v.column_names?.join(", ")}
+            <div className="card mt1">
+              <div className="section-title mb1">File Summary</div>
+              <div className="table-wrap">
+                <table>
+                  <tbody>
+                    <tr><td className="text-muted">Filename</td><td><strong>{result.filename}</strong></td></tr>
+                    <tr><td className="text-muted">Rows</td><td>{v.rows?.toLocaleString()}</td></tr>
+                    <tr><td className="text-muted">Columns</td><td>{v.columns}</td></tr>
+                    <tr>
+                      <td className="text-muted">Columns detected</td>
+                      <td>
+                        <div className="tag-list">
+                          {v.column_names?.map((c) => (
+                            <span key={c} className="badge badge-gray">{c}</span>
+                          ))}
+                        </div>
                       </td>
-                  </tr>
-                  <tr>
-                    <td>Status</td>
-                    <td>
-                      <span className={`badge ${v.status === "Valid" ? "badge-green" : "badge-red"}`}>
-                        {v.status}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </tr>
+                    <tr>
+                      <td className="text-muted">Status</td>
+                      <td><span className={`badge ${v.status === "Valid" ? "badge-green" : "badge-red"}`}>{v.status}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {v.errors?.length > 0 && (
               <div className="alert alert-error mt1">
-                <strong>Issues found:</strong>
-                {v.errors.map((e, i) => <div key={i} style={{ marginTop: "0.3rem" }}>• {e}</div>)}
+                {v.errors.map((e, i) => <div key={i}>— {e}</div>)}
               </div>
             )}
 
             {v.status === "Valid" && (
-              <div className="gap mt1">
-                <button
-                  className="btn btn-primary"
-                  style={{ width: "auto" }}
-                  onClick={() => navigate("/analysis")}
-                >
-                  Profile Dataset →
+              <div className="flex-row mt2">
+                <button className="btn btn-primary" onClick={() => navigate("/analysis")}>
+                  View Analysis
+                </button>
+                <button className="btn btn-secondary" onClick={() => navigate("/repair")}>
+                  Run Preprocessing
                 </button>
               </div>
             )}
