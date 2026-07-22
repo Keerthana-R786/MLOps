@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { FileIcon } from "../components/NavIcons";
+
+const safeNum = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
 
 export default function Dashboard() {
   const navigate     = useNavigate();
   const [online,     setOnline]  = useState(null);
+  const [stats,      setStats]   = useState(null);
   const uploadedFile = localStorage.getItem("uploadedFile");
 
   useEffect(() => {
     API.get("/").then(() => setOnline(true)).catch(() => setOnline(false));
+    API.get("/monitoring/stats").then((res) => setStats(res.data)).catch(() => {});
   }, []);
 
   const steps = [
@@ -25,22 +30,60 @@ export default function Dashboard() {
         <p>Prepare your dataset for machine learning.</p>
       </div>
 
-      {/* Status bar */}
-      <div className={`alert ${online === null ? "alert-info" : online ? "alert-success" : "alert-error"}`}>
-        {online === null && "Connecting to backend..."}
-        {online === true  && "Backend connected — http://localhost:8000"}
-        {online === false && "Backend not reachable. Start the server: uvicorn app.main:app --reload --host 0.0.0.0"}
+      {/* Status row */}
+      <div className="dashboard-status-row">
+        <div className={`status-pill status-pill-${online === null ? "pending" : online ? "online" : "offline"}`}>
+          <span className="status-dot" />
+          {online === null && "Connecting to backend…"}
+          {online === true  && <>Backend Connected <span className="status-pill-sub">localhost:8000</span></>}
+          {online === false && "Backend offline — start uvicorn on :8000"}
+        </div>
+
+        {uploadedFile && (
+          <div className="file-chip">
+            <FileIcon size={13} />
+            <span className="file-chip-name">{uploadedFile}</span>
+            <button
+              className="file-chip-clear"
+              onClick={() => { localStorage.removeItem("uploadedFile"); window.location.reload(); }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
-      {uploadedFile && (
-        <div className="alert alert-info mt1">
-          Active file: <strong style={{ color: "var(--accent)" }}>{uploadedFile}</strong>
-          <span className="text-muted" style={{ marginLeft: "0.5rem" }}>
-            — <span style={{ cursor: "pointer", color: "var(--accent)" }}
-                    onClick={() => { localStorage.removeItem("uploadedFile"); window.location.reload(); }}>
-                clear
-              </span>
-          </span>
+      {/* Monitoring snapshot */}
+      {stats && (
+        <div className="section mt2">
+          <div className="flex-between mb1">
+            <div className="section-title" style={{ marginBottom: 0 }}>Monitoring</div>
+            <span className="text-accent" style={{ cursor: "pointer", fontSize: "0.8rem" }} onClick={() => navigate("/monitoring")}>
+              View details →
+            </span>
+          </div>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <div className="stat-value">{stats.upload_count}</div>
+              <div className="stat-label">Upload Count</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: stats.failure_count > 0 ? "var(--yellow)" : "var(--green)" }}>
+                {stats.failure_count}
+              </div>
+              <div className="stat-label">Failure Count</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: "var(--green)" }}>
+                {safeNum(stats.average_quality_score)}{stats.average_quality_score != null ? "%" : ""}
+              </div>
+              <div className="stat-label">Avg Quality Score</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{safeNum(stats.average_repair_time_seconds)}s</div>
+              <div className="stat-label">Avg Repair Time</div>
+            </div>
+          </div>
         </div>
       )}
 

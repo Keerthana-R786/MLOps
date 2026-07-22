@@ -12,7 +12,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from app.config import UPLOAD_DIR, REPORTS_DIR
 from app.services.profiling import profile_dataset
 from app.services.quality import score_dataset
-from app.services.repair import repair_dataset
+from app.services.preprocessing import preprocess_dataset
 
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
@@ -121,15 +121,31 @@ def build_pdf(filename, profile, quality_before, quality_after, repair_log, reco
     m   = repair_log.get("missing_values", {})
     d   = repair_log.get("duplicates", {})
     o   = repair_log.get("outliers", {})
-    iv  = repair_log.get("invalid_data", {})
+    lv  = repair_log.get("low_variance", {})
+    dc  = repair_log.get("duplicate_columns", {})
     lb  = repair_log.get("label_errors", {})
+
+    strategy = o.get("strategy", "clip")
+    if strategy == "clip":
+        outlier_count = o.get("total_values_clipped", 0)
+    elif strategy == "remove":
+        outlier_count = o.get("rows_removed", 0)
+    else:
+        outlier_count = o.get("outliers_flagged", 0)
+
+    redundant_removed = (
+        len(lv.get("constant_columns_dropped", [])) +
+        len(lv.get("near_constant_dropped", [])) +
+        len(dc.get("duplicate_columns_dropped", []))
+    )
+
     c.append(_make_table([
         ["Module",                    "Result"],
         ["Missing (Numerical)",        ", ".join(m.get("numerical_imputed", [])) or "None"],
         ["Missing (Categorical)",      ", ".join(m.get("categorical_imputed", [])) or "None"],
         ["Duplicates Removed",         str(d.get("duplicates_removed", 0))],
-        ["Outliers",                   f"{o.get('outliers_detected', 0)} ({o.get('action','flag')})"],
-        ["Invalid Values Clipped",     str(iv.get("total_invalid", 0))],
+        ["Outliers",                   f"{outlier_count} ({strategy})"],
+        ["Redundant Columns Removed",  str(redundant_removed)],
         ["Label Errors Found",         str(lb.get("label_errors_found", 0))],
     ]))
     c.append(Spacer(1, 0.3*cm))
@@ -169,8 +185,9 @@ def generate_report(filename: str, repair_log: dict = None) -> dict:
     # Run repair only if cleaned file doesn't exist yet
     if repair_log is None:
         if not os.path.exists(cleaned_path):
-            result     = repair_dataset(filepath)
-            repair_log = result["repair_log"]
+            result     = preprocess_dataset(filepath)
+            result.pop("_fitted_models", None)
+            repair_log = result["audit"]
         else:
             repair_log = {}
 

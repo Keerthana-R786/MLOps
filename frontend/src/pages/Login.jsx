@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,9 +19,9 @@ export default function Login() {
 
   return (
     <div className="page-center">
-      <div className="card card-sm" style={{ width: "100%" }}>
+      <div className="capsule-card card-sm" style={{ width: "100%" }}>
         <div style={{ marginBottom: "1.75rem" }}>
-          <h1 style={{ fontSize: "1.2rem" }}>Sign in</h1>
+          <h1 className="text-gradient text-gradient-glow" style={{ fontSize: "1.3rem" }}>Sign In</h1>
           <p>Access the DataPrep platform</p>
         </div>
 
@@ -39,13 +40,19 @@ export default function Login() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
-          <button className="btn btn-primary btn-full" type="submit">Sign In</button>
+          <motion.button
+            className="btn btn-primary btn-full"
+            type="submit"
+            whileTap={{ scale: 0.97 }}
+          >
+            Sign In
+          </motion.button>
         </form>
 
-        <div className="divider" />
-        <div style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+        <div className="glow-divider" />
+        <div style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--ink-400)" }}>
           No account?{" "}
-          <span style={{ color: "var(--accent)", cursor: "pointer" }}
+          <span style={{ color: "var(--violet-400)", cursor: "pointer" }}
                 onClick={() => navigate("/dashboard")}>
             Continue as guest
           </span>

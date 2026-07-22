@@ -2,6 +2,7 @@ import os
 import time
 import mlflow
 from app.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT
+from app.services.model_registry import register_models
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(MLFLOW_EXPERIMENT)
@@ -10,7 +11,7 @@ execution_time = 0  # default — prevents UnboundLocalError
 
 
 def track_repair_run(filename, repair_log, quality_before, quality_after,
-                     cleaned_path, pdf_path) -> dict:
+                     cleaned_path, pdf_path, fitted_models=None) -> dict:
     global execution_time
     execution_time = 0
     start_time = time.time()
@@ -29,8 +30,7 @@ def track_repair_run(filename, repair_log, quality_before, quality_after,
             mlflow.log_param("repair_method_missing_numerical",   "KNNImputer")
             mlflow.log_param("repair_method_missing_categorical",  "MostFrequent")
             mlflow.log_param("repair_method_outliers",
-                             repair_log.get("outliers", {}).get("action", "flag"))
-            mlflow.log_param("repair_method_invalid",  "IQR_clip")
+                             repair_log.get("outliers", {}).get("strategy", "clip"))
             mlflow.log_param("repair_method_labels",   "cleanlab")
 
             m = repair_log.get("missing_values", {})
@@ -44,13 +44,23 @@ def track_repair_run(filename, repair_log, quality_before, quality_after,
             mlflow.log_metric("rows_after_dedup",    d.get("rows_after",   0))
 
             o = repair_log.get("outliers", {})
-            mlflow.log_metric("outliers_detected",
-                              o.get("outliers_detected",
-                              o.get("rows_removed",
-                              o.get("outliers_flagged", 0))))
+            strategy = o.get("strategy", "clip")
+            if strategy == "clip":
+                outliers_count = o.get("total_values_clipped", 0)
+            elif strategy == "remove":
+                outliers_count = o.get("rows_removed", 0)
+            else:
+                outliers_count = o.get("outliers_flagged", 0)
+            mlflow.log_metric("outliers_detected", outliers_count)
 
-            iv = repair_log.get("invalid_data", {})
-            mlflow.log_metric("invalid_entries_fixed", iv.get("total_invalid", 0))
+            lv = repair_log.get("low_variance", {})
+            dc = repair_log.get("duplicate_columns", {})
+            redundant_removed = (
+                len(lv.get("constant_columns_dropped", [])) +
+                len(lv.get("near_constant_dropped", [])) +
+                len(dc.get("duplicate_columns_dropped", []))
+            )
+            mlflow.log_metric("redundant_columns_removed", redundant_removed)
 
             lb = repair_log.get("label_errors", {})
             mlflow.log_metric("label_errors_found",  lb.get("label_errors_found", 0))
@@ -82,18 +92,24 @@ def track_repair_run(filename, repair_log, quality_before, quality_after,
             if os.path.exists(pdf_path):
                 mlflow.log_artifact(pdf_path, artifact_path="reports")
 
+            registered_models = []
+            if fitted_models:
+                registered_models = register_models(fitted_models, dataset_name=filename)
+
     except Exception as e:
-        run_id      = "error"
-        improvement = 0
-        execution_time = round(time.time() - start_time, 2)
+        run_id            = "error"
+        improvement       = 0
+        registered_models = []
+        execution_time    = round(time.time() - start_time, 2)
         print(f"MLflow logging error: {e}")
 
     return {
-        "run_id":         run_id,
-        "experiment":     MLFLOW_EXPERIMENT,
-        "tracking_uri":   MLFLOW_TRACKING_URI,
-        "execution_time": execution_time,
-        "quality_before": quality_before.get("overall_score", 0),
-        "quality_after":  quality_after.get("overall_score", 0),
-        "improvement":    improvement,
+        "run_id":            run_id,
+        "experiment":        MLFLOW_EXPERIMENT,
+        "tracking_uri":      MLFLOW_TRACKING_URI,
+        "execution_time":    execution_time,
+        "quality_before":    quality_before.get("overall_score", 0),
+        "quality_after":     quality_after.get("overall_score", 0),
+        "improvement":       improvement,
+        "registered_models": registered_models,
     }

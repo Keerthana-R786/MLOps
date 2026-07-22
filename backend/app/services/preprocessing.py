@@ -107,6 +107,7 @@ def remove_duplicates(df: pd.DataFrame) -> tuple:
 # ─── Step 4: Missing Value Imputation ────────────────────────────────────────
 def impute_missing(df: pd.DataFrame) -> tuple:
     log = {"numerical_imputed": [], "categorical_imputed": [], "columns_dropped": []}
+    fitted_imputer = None
 
     # Drop columns with >60% missing — too sparse to impute reliably
     threshold = 0.6
@@ -124,6 +125,7 @@ def impute_missing(df: pd.DataFrame) -> tuple:
         imputer     = KNNImputer(n_neighbors=n_neighbors)
         df[num_cols] = imputer.fit_transform(df[num_cols])
         log["numerical_imputed"] = num_missing
+        fitted_imputer = imputer
 
     # Categorical — most frequent
     cat_missing = [c for c in cat_cols if df[c].isnull().any()]
@@ -132,7 +134,7 @@ def impute_missing(df: pd.DataFrame) -> tuple:
         df[cat_cols] = imputer.fit_transform(df[cat_cols])
         log["categorical_imputed"] = cat_missing
 
-    return df, log
+    return df, log, fitted_imputer
 
 
 # ─── Step 5: Outlier Handling ─────────────────────────────────────────────────
@@ -143,7 +145,9 @@ def handle_outliers(df: pd.DataFrame, strategy: str = "clip") -> tuple:
       'remove' — remove rows with extreme outliers via IsolationForest
       'flag'   — add is_outlier column, keep rows (good when you want to inspect)
     """
-    log = {"strategy": strategy, "columns_clipped": [], "rows_removed": 0, "outliers_flagged": 0}
+    log = {"strategy": strategy, "columns_clipped": [], "total_values_clipped": 0,
+           "rows_removed": 0, "outliers_flagged": 0}
+    fitted_iso = None
 
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     # Exclude binary columns (0/1) — they're likely labels or flags
@@ -151,7 +155,7 @@ def handle_outliers(df: pd.DataFrame, strategy: str = "clip") -> tuple:
                     if df[c].dropna().nunique() > 2]
 
     if not feature_cols:
-        return df, log
+        return df, log, fitted_iso
 
     if strategy == "clip":
         for col in feature_cols:
@@ -164,6 +168,7 @@ def handle_outliers(df: pd.DataFrame, strategy: str = "clip") -> tuple:
             if clipped > 0:
                 df[col] = df[col].clip(lower=lower, upper=upper)
                 log["columns_clipped"].append(f"{col} ({clipped} values)")
+                log["total_values_clipped"] += clipped
 
     elif strategy == "remove":
         iso   = IsolationForest(contamination=0.05, random_state=42, n_jobs=-1)
@@ -172,6 +177,7 @@ def handle_outliers(df: pd.DataFrame, strategy: str = "clip") -> tuple:
         removed = int(mask.sum())
         df    = df[~mask].reset_index(drop=True)
         log["rows_removed"] = removed
+        fitted_iso = iso
 
     elif strategy == "flag":
         iso   = IsolationForest(contamination=0.05, random_state=42, n_jobs=-1)
@@ -179,8 +185,9 @@ def handle_outliers(df: pd.DataFrame, strategy: str = "clip") -> tuple:
         df    = df.copy()
         df["is_outlier"] = (preds == -1).astype(int)
         log["outliers_flagged"] = int((preds == -1).sum())
+        fitted_iso = iso
 
-    return df, log
+    return df, log, fitted_iso
 
 
 # ─── Step 6: Constant & Low-Variance Column Removal ──────────────────────────
@@ -281,14 +288,19 @@ def preprocess_dataset(filepath: str, outlier_strategy: str = "clip") -> dict:
     audit          = {}
 
     # Run pipeline steps
-    df, audit["structure"]         = fix_structure(df)
-    df, audit["type_inference"]    = infer_and_cast_types(df)
-    df, audit["duplicates"]        = remove_duplicates(df)
-    df, audit["missing_values"]    = impute_missing(df)
-    df, audit["outliers"]          = handle_outliers(df, strategy=outlier_strategy)
-    df, audit["low_variance"]      = remove_low_variance(df)
-    df, audit["duplicate_columns"] = remove_duplicate_columns(df)
-    df, audit["label_errors"]      = detect_label_errors(df)
+    df, audit["structure"]                     = fix_structure(df)
+    df, audit["type_inference"]                = infer_and_cast_types(df)
+    df, audit["duplicates"]                    = remove_duplicates(df)
+    df, audit["missing_values"], knn_imputer   = impute_missing(df)
+    df, audit["outliers"], isolation_forest    = handle_outliers(df, strategy=outlier_strategy)
+    df, audit["low_variance"]                  = remove_low_variance(df)
+    df, audit["duplicate_columns"]             = remove_duplicate_columns(df)
+    df, audit["label_errors"]                  = detect_label_errors(df)
+
+    fitted_models = {
+        "knn_imputer":      knn_imputer,
+        "isolation_forest": isolation_forest,
+    }
 
     # Save cleaned file — drop internal flag columns
     flag_cols   = [c for c in ["is_outlier", "label_issue"] if c in df.columns]
@@ -313,4 +325,5 @@ def preprocess_dataset(filepath: str, outlier_strategy: str = "clip") -> dict:
         "cleaned_file":    f"{base}_cleaned.csv",
         "outlier_strategy": outlier_strategy,
         "audit":           audit,
+        "_fitted_models":  fitted_models,  # popped by the route before the JSON response
     }

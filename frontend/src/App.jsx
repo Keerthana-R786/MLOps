@@ -1,5 +1,10 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState } from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import Sidebar from "./components/Sidebar";
+import Starfield from "./components/Starfield";
+import PageTransition from "./components/PageTransition";
+import SplashScreen from "./components/SplashScreen";
 import Landing      from "./pages/Landing";
 import Login        from "./pages/Login";
 import Dashboard    from "./pages/Dashboard";
@@ -10,30 +15,57 @@ import QualityReport from "./pages/QualityReport";
 import Monitoring   from "./pages/Monitoring";
 import Settings     from "./pages/Settings";
 
-const WithSidebar = ({ children }) => (
-  <div className="layout">
-    <Sidebar />
-    <div className="main">{children}</div>
-  </div>
-);
+const WithSidebar = ({ children }) => {
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("sidebarCollapsed") === "1");
 
-export default function App() {
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebarCollapsed", next ? "1" : "0");
+      return next;
+    });
+  };
+
   return (
-    <BrowserRouter>
-      <Routes>
+    <div className={`layout ${collapsed ? "sidebar-collapsed" : ""}`}>
+      <Sidebar collapsed={collapsed} onToggle={toggleCollapsed} />
+      <div className="main">{children}</div>
+    </div>
+  );
+};
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         {/* Public pages — no sidebar */}
-        <Route path="/"      element={<Landing />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/"      element={<PageTransition><Landing /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
 
         {/* App pages — with sidebar */}
-        <Route path="/dashboard" element={<WithSidebar><Dashboard /></WithSidebar>} />
-        <Route path="/upload"    element={<WithSidebar><Upload /></WithSidebar>} />
-        <Route path="/analysis"  element={<WithSidebar><Analysis /></WithSidebar>} />
-        <Route path="/repair"    element={<WithSidebar><RepairResult /></WithSidebar>} />
-        <Route path="/quality"   element={<WithSidebar><QualityReport /></WithSidebar>} />
-        <Route path="/monitoring" element={<WithSidebar><Monitoring /></WithSidebar>} />
-        <Route path="/settings"  element={<WithSidebar><Settings /></WithSidebar>} />
+        <Route path="/dashboard" element={<WithSidebar><PageTransition><Dashboard /></PageTransition></WithSidebar>} />
+        <Route path="/upload"    element={<WithSidebar><PageTransition><Upload /></PageTransition></WithSidebar>} />
+        <Route path="/analysis"  element={<WithSidebar><PageTransition><Analysis /></PageTransition></WithSidebar>} />
+        <Route path="/repair"    element={<WithSidebar><PageTransition><RepairResult /></PageTransition></WithSidebar>} />
+        <Route path="/quality"   element={<WithSidebar><PageTransition><QualityReport /></PageTransition></WithSidebar>} />
+        <Route path="/monitoring" element={<WithSidebar><PageTransition><Monitoring /></PageTransition></WithSidebar>} />
+        <Route path="/settings"  element={<WithSidebar><PageTransition><Settings /></PageTransition></WithSidebar>} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  return (
+    <BrowserRouter>
+      <Starfield />
+      <AnimatedRoutes />
+      <AnimatePresence>
+        {showSplash && <SplashScreen key="splash" onDone={() => setShowSplash(false)} />}
+      </AnimatePresence>
     </BrowserRouter>
   );
 }

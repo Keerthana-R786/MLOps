@@ -25,3 +25,12 @@ Thumbs.db
 # Reports (generated at runtime)
 backend/uploads/
 backend/reports/
+
+# Registered model artifacts (system of record is MLflow's registry, mlflow.db)
+models/
+
+# Drift reports (generated at runtime, one per uploaded filename)
+datasets/drift/
+
+# DVC local remote storage (not committed to git — versioned via dvc push/pull)
+dvc-storage/

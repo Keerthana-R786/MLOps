@@ -1,56 +1,78 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  DashboardIcon, UploadIcon, AnalysisIcon, PreprocessIcon,
+  QualityIcon, MonitoringIcon, SettingsIcon, ChevronIcon,
+} from "./NavIcons";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/upload",    label: "Upload" },
-  { to: "/analysis",  label: "Analysis" },
-  { to: "/repair",    label: "Preprocessing" },
-  { to: "/quality",   label: "Quality Report" },
-  { to: "/monitoring",label: "Monitoring" },
-  { to: "/settings",  label: "Settings" },
+  { to: "/dashboard", label: "Dashboard",     Icon: DashboardIcon },
+  { to: "/upload",    label: "Upload",        Icon: UploadIcon },
+  { to: "/analysis",  label: "Analysis",      Icon: AnalysisIcon },
+  { to: "/repair",    label: "Preprocessing", Icon: PreprocessIcon },
+  { to: "/quality",   label: "Quality Report",Icon: QualityIcon },
+  { to: "/monitoring",label: "Monitoring",    Icon: MonitoringIcon },
+  { to: "/settings",  label: "Settings",      Icon: SettingsIcon },
 ];
 
-export default function Sidebar() {
-  const navigate = useNavigate();
-  const file     = localStorage.getItem("uploadedFile");
+const MotionNavLink = motion.create(NavLink);
+
+export default function Sidebar({ collapsed = false, onToggle }) {
+  const file = localStorage.getItem("uploadedFile");
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar-brand">
-        <h1>DataPrep</h1>
-        <p>ML Dataset Platform</p>
+        <h1>{collapsed ? "DP" : "DataPrep"}</h1>
+        {!collapsed && <p>ML Dataset Platform</p>}
       </div>
 
       <nav className="sidebar-nav">
-        <span className="sidebar-section-label">Navigation</span>
+        {!collapsed && <span className="sidebar-section-label">Navigation</span>}
         {nav.map((n) => (
-          <NavLink
+          <MotionNavLink
             key={n.to}
             to={n.to}
-            className={({ isActive }) => isActive ? "active" : ""}
+            title={collapsed ? n.label : undefined}
+            className={({ isActive }) => (isActive ? "active" : "")}
+            whileHover={{ scale: 1.025, x: collapsed ? 0 : 2 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
           >
-            <span className="sidebar-dot" />
-            {n.label}
-          </NavLink>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="nav-pill"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <span className="sidebar-icon-bubble">
+                  <n.Icon />
+                </span>
+                {!collapsed && <span className="nav-label">{n.label}</span>}
+              </>
+            )}
+          </MotionNavLink>
         ))}
       </nav>
 
-      {file && (
-        <div className="sidebar-footer">
+      {file && !collapsed && (
+        <motion.div
+          className="sidebar-footer"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <div className="text-xs text-muted mb1">Active file</div>
-          <div style={{
-            background: "var(--surface2)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "0.5rem 0.6rem",
-            fontSize: "0.75rem",
-            color: "var(--text)",
-            wordBreak: "break-all",
-          }}>
-            {file}
-          </div>
-        </div>
+          <div className="sidebar-file-chip">{file}</div>
+        </motion.div>
       )}
+
+      <button className="sidebar-toggle" onClick={onToggle} title="Toggle sidebar">
+        <ChevronIcon />
+      </button>
     </div>
   );
 }

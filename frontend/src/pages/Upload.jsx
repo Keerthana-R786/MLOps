@@ -36,7 +36,9 @@ export default function Upload() {
     }
   };
 
-  const v = result?.validation;
+  const v            = result?.validation;
+  const drift        = result?.drift;
+  const autoRetrain  = result?.auto_retrain;
 
   return (
     <div>
@@ -119,6 +121,88 @@ export default function Upload() {
             {v.errors?.length > 0 && (
               <div className="alert alert-error mt1">
                 {v.errors.map((e, i) => <div key={i}>— {e}</div>)}
+              </div>
+            )}
+
+            {drift && !drift.error && drift.drift_detected && (
+              <div className="card mt1" style={{ borderColor: "var(--yellow)" }}>
+                <div className="alert alert-warning mb1">
+                  Drift alert — this file's distribution has shifted vs the previous upload of "{result.filename}".
+                </div>
+                {drift.feature_distribution_drift.length > 0 && (
+                  <div className="mb1">
+                    <div className="text-sm text-muted mb1">Feature distribution changed (KS test)</div>
+                    <div className="tag-list">
+                      {drift.feature_distribution_drift.map((d) => (
+                        <span key={d.column} className="badge badge-yellow">{d.column} (p={d.p_value})</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {drift.missing_value_drift.length > 0 && (
+                  <div className="mb1">
+                    <div className="text-sm text-muted mb1">Missing-value rate changed</div>
+                    <div className="tag-list">
+                      {drift.missing_value_drift.map((d) => (
+                        <span key={d.column} className="badge badge-yellow">{d.column} (+{d.delta_pct}pp)</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {drift.outlier_distribution_drift.length > 0 && (
+                  <div>
+                    <div className="text-sm text-muted mb1">Outlier rate changed</div>
+                    <div className="tag-list">
+                      {drift.outlier_distribution_drift.map((d) => (
+                        <span key={d.column} className="badge badge-yellow">{d.column} (+{d.delta_pct}pp)</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {drift && !drift.error && !drift.drift_detected && (
+              <div className="alert alert-success mt1">
+                No drift detected vs the previous upload of "{result.filename}".
+              </div>
+            )}
+
+            {autoRetrain && !autoRetrain.error && (
+              <div className="card mt1" style={{ borderColor: "var(--accent)" }}>
+                <div className="alert alert-info mb1">
+                  Drift triggered auto-retraining — models were retrained on this dataset and re-evaluated
+                  (quality {autoRetrain.quality_before}% → {autoRetrain.quality_after}%, grade {autoRetrain.grade}).
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Model</th><th>New Version</th><th>Outcome</th></tr></thead>
+                    <tbody>
+                      {autoRetrain.registered_models.map((m) => {
+                        const deployed = autoRetrain.deployed_to_production.some(
+                          (d) => d.name === m.name && d.version === m.version
+                        );
+                        return (
+                          <tr key={m.name}>
+                            <td>{m.name}</td>
+                            <td>v{m.version}</td>
+                            <td>
+                              <span className={`badge ${deployed ? "badge-green" : "badge-yellow"}`}>
+                                {deployed ? "Deployed to Production" : "Held in Staging"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt1 text-sm text-muted">
+                  Promotion threshold: {autoRetrain.promotion_threshold}% quality score.{" "}
+                  <span className="text-accent" style={{ cursor: "pointer" }} onClick={() => navigate("/monitoring")}>
+                    View registry →
+                  </span>
+                </p>
               </div>
             )}
 

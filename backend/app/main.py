@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import upload, profile, repair, report
+from app.routes import upload, profile, repair, report, registry, monitoring, drift
 
 app = FastAPI(title="Dataset Repair Platform", version="1.0.0")
 
@@ -18,6 +18,9 @@ app.include_router(upload.router)
 app.include_router(profile.router)
 app.include_router(repair.router)
 app.include_router(report.router)
+app.include_router(registry.router)
+app.include_router(monitoring.router)
+app.include_router(drift.router)
 
 
 @app.get("/")
