@@ -17,17 +17,17 @@ export default function Dashboard() {
   }, []);
 
   const steps = [
-    { step: "01", label: "Upload Dataset",    desc: "Upload a CSV file to begin", route: "/upload",   done: !!uploadedFile },
-    { step: "02", label: "Analyse",           desc: "View statistical profile",    route: "/analysis", done: !!uploadedFile },
-    { step: "03", label: "Preprocess",        desc: "Clean and repair the dataset",route: "/repair",   done: false },
-    { step: "04", label: "Download Results",  desc: "Quality report and clean CSV",route: "/quality",  done: false },
+    { step: "01", label: "Upload Dataset",   desc: "Upload a CSV file to begin",       route: "/upload",     done: !!uploadedFile },
+    { step: "02", label: "Analyse & Prep",   desc: "Profile, clean, and score quality", route: "/analysis",   done: !!uploadedFile },
+    { step: "03", label: "AI Model Trainer", desc: "Configure and train predictors",    route: "/ai-trainer", done: false },
+    { step: "04", label: "Monitor",          desc: "Track runs, drift, and models",     route: "/monitoring", done: false },
   ];
 
   return (
     <div>
       <div className="page-header">
         <h1>Dashboard</h1>
-        <p>Prepare your dataset for machine learning.</p>
+        <p>Clean data, train models, and ship predictions — in one place.</p>
       </div>
 
       {/* Status row */}
@@ -126,6 +126,11 @@ export default function Dashboard() {
           {uploadedFile && (
             <button className="btn btn-secondary" onClick={() => navigate("/repair")}>
               Run Preprocessing
+            </button>
+          )}
+          {uploadedFile && (
+            <button className="btn btn-secondary" onClick={() => navigate("/ai-trainer")}>
+              AI Model Trainer
             </button>
           )}
           <button className="btn btn-ghost" onClick={() => navigate("/monitoring")}>

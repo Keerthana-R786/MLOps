@@ -20,7 +20,7 @@ export default function AIModelTrainer() {
 
   const addLog = (msg) => setLogs((p) => [...p, msg]);
 
-  // ── Step 1: Analyze with Gemini ──────────────────────────────────────────
+  // ── Step 1: Analyze project with AI ──────────────────────────────────────
   const handleAnalyze = async () => {
     if (!prompt.trim()) return;
     if (!filename) { setError("Upload a dataset first before analyzing."); return; }
@@ -111,9 +111,9 @@ export default function AIModelTrainer() {
         <div className="page-header-row">
           <div>
             <h1>AI Model Trainer</h1>
-            <p>Describe your project. Gemini AI will configure and train the right model for your dataset.</p>
+            <p>Describe your project. AI will configure and train the right model for your dataset.</p>
           </div>
-          {filename && <span className="badge badge-green">Dataset: {filename}</span>}
+          {filename && <span className="badge badge-gray">Dataset: {filename}</span>}
         </div>
       </div>
 
@@ -151,112 +151,179 @@ export default function AIModelTrainer() {
             onClick={handleAnalyze}
             disabled={!prompt.trim() || !filename || step === "analyzing"}
           >
-            {step === "analyzing" ? "Analyzing with Gemini AI..." : "Analyze Project with Gemini"}
+            {step === "analyzing" ? "Analyzing project..." : "Analyze Project"}
           </button>
         </div>
       )}
 
-      {/* ── Step 2: Show Gemini Analysis ─────────────────────────────────── */}
+      {/* ── Step 2: Show AI analysis ─────────────────────────────────────── */}
       {analysis && (step === "reviewed" || step === "training" || step === "done") && (
-        <div className="card card-md mb2">
+        <div className="card ai-response mb2">
           <div className="flex-between mb2">
             <div className="section-title" style={{ margin: 0 }}>
-              Step 2 — Gemini Analysis
+              Step 2 — Suggested Configuration
             </div>
             {step === "reviewed" && (
               <button className="btn btn-ghost btn-sm" onClick={reset}>Change description</button>
             )}
           </div>
 
-          <div className="table-wrap mb2">
-            <table>
-              <tbody>
-                <tr>
-                  <td className="text-muted" style={{ width: 180 }}>Domain</td>
-                  <td><strong>{analysis.domain}</strong></td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Problem type</td>
-                  <td><span className="badge badge-blue">{analysis.problem_type?.replace(/_/g, " ")}</span></td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Target column</td>
-                  <td>{analysis.target_column ? <code>{analysis.target_column}</code> : <span className="text-muted">None (unsupervised)</span>}</td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Evaluation metric</td>
-                  <td><code>{analysis.evaluation_metric}</code></td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Handle imbalance</td>
-                  <td>
-                    {analysis.handle_imbalance
-                      ? <span className="badge badge-yellow">Yes — SMOTE</span>
-                      : <span className="badge badge-gray">Not required</span>}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Columns to drop</td>
-                  <td>
-                    {analysis.drop_columns?.length > 0
-                      ? <div className="tag-list">{analysis.drop_columns.map(c => <span key={c} className="badge badge-red">{c}</span>)}</div>
-                      : <span className="text-muted">None</span>}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Features to use</td>
-                  <td>
-                    <div className="tag-list">
-                      {analysis.feature_columns?.map(c => <span key={c} className="badge badge-gray">{c}</span>)}
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Models to train</td>
-                  <td>
-                    <div className="tag-list">
-                      {analysis.models_to_train?.map(m => <span key={m} className="badge badge-blue">{m}</span>)}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          {/* Suitability banner — shown first */}
+          <div className={`ai-fit-banner ${analysis.suitable === false ? "bad" : "ok"}`}>
+            <div className="ai-fit-title">
+              {analysis.suitable === false
+                ? "This dataset is not suitable for your request"
+                : "Dataset looks suitable for your request"}
+            </div>
+            <p>
+              {analysis.suitability_summary ||
+                (analysis.suitable === false
+                  ? "The uploaded file does not match what you described."
+                  : "Columns and samples align with your project description.")}
+            </p>
+            {analysis.suitable === false && analysis.mismatch_reason && (
+              <p style={{ marginTop: "0.55rem" }}>{analysis.mismatch_reason}</p>
+            )}
+
+            {analysis.suitable === false && (
+              <div className="ai-fit-grid">
+                <div className="ai-fit-box">
+                  <h4>Your dataset has</h4>
+                  <ul>
+                    {(analysis.dataset_has?.length
+                      ? analysis.dataset_has
+                      : ["Columns that do not match your described use case"]
+                    ).map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="ai-fit-box">
+                  <h4>What you need</h4>
+                  <ul>
+                    {(analysis.what_you_need?.length
+                      ? analysis.what_you_need
+                      : ["A dataset with fields that match your prediction goal"]
+                    ).map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Gemini's reasoning */}
+          {analysis.suitable === false && step === "reviewed" && (
+            <div className="flex-row flex-wrap mb2">
+              <button className="btn btn-primary" onClick={() => navigate("/upload")}>
+                Upload a better dataset
+              </button>
+              <button className="btn btn-secondary" onClick={reset}>
+                Rewrite project description
+              </button>
+            </div>
+          )}
+
+          <div className="section-title">Training plan</div>
+          <div className="ai-config-grid">
+            <div className="ai-config-item">
+              <div className="label">Domain</div>
+              <div className="value">{analysis.domain || "—"}</div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Problem type</div>
+              <div className="value">{analysis.problem_type?.replace(/_/g, " ") || "—"}</div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Target column</div>
+              <div className="value">
+                {analysis.target_column
+                  ? <code>{analysis.target_column}</code>
+                  : "None (unsupervised)"}
+              </div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Evaluation metric</div>
+              <div className="value"><code>{analysis.evaluation_metric || "—"}</code></div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Class imbalance</div>
+              <div className="value">
+                {analysis.handle_imbalance ? "Handled with SMOTE" : "Not required"}
+              </div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Models to train</div>
+              <div className="ai-chip-row">
+                {(analysis.models_to_train || []).map((m) => (
+                  <span key={m} className="ai-chip">{m}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="ai-config-grid" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="ai-config-item">
+              <div className="label">Features to use</div>
+              <div className="ai-chip-row">
+                {(analysis.feature_columns || []).map((c) => (
+                  <span key={c} className="ai-chip">{c}</span>
+                ))}
+                {!analysis.feature_columns?.length && <span className="text-muted text-sm">None</span>}
+              </div>
+            </div>
+            <div className="ai-config-item">
+              <div className="label">Columns to drop</div>
+              <div className="ai-chip-row">
+                {(analysis.drop_columns || []).map((c) => (
+                  <span key={c} className="ai-chip muted">{c}</span>
+                ))}
+                {!analysis.drop_columns?.length && <span className="text-muted text-sm">None</span>}
+              </div>
+            </div>
+          </div>
+
           {analysis.reasoning?.length > 0 && (
             <>
-              <div className="section-title mb1">Why these choices?</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1.25rem" }}>
+              <div className="section-title">Why these choices?</div>
+              <div className="ai-reason-list">
                 {analysis.reasoning.map((r, i) => (
-                  <div key={i} style={{
-                    fontSize: "0.83rem", color: "var(--text-muted)",
-                    paddingLeft: "0.75rem", borderLeft: "2px solid var(--border)"
-                  }}>
-                    {r}
-                  </div>
+                  <div key={i} className="ai-reason-item">{r}</div>
                 ))}
               </div>
             </>
           )}
 
           {analysis.preprocessing_notes && (
-            <div className="alert alert-info mb2" style={{ fontSize: "0.83rem" }}>
-              {analysis.preprocessing_notes}
-            </div>
+            <>
+              <div className="section-title">Preprocessing notes</div>
+              <div className="ai-note mb2">{analysis.preprocessing_notes}</div>
+            </>
           )}
 
           {step === "reviewed" && (
-            <button className="btn btn-primary" onClick={handleTrain}>
-              Confirm and Train Model
-            </button>
+            <div className="flex-row flex-wrap">
+              <button
+                className="btn btn-primary"
+                onClick={handleTrain}
+                disabled={analysis.suitable === false}
+                title={analysis.suitable === false ? "Upload a matching dataset before training" : undefined}
+              >
+                {analysis.suitable === false ? "Training blocked — dataset mismatch" : "Confirm and Train Model"}
+              </button>
+              {analysis.suitable === false && (
+                <span className="text-muted text-sm">
+                  Fix the mismatch above, then analyze again.
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {/* ── Training log ─────────────────────────────────────────────────── */}
       {(step === "training" || step === "done") && logs.length > 0 && (
-        <div className="card card-md mb2">
+        <div className="card ai-response mb2">
           <div className="section-title mb1">Training Log</div>
           <div
             ref={logRef}
@@ -264,8 +331,8 @@ export default function AIModelTrainer() {
             style={{ height: 260, overflowY: "auto", lineHeight: 1.9 }}
           >
             {logs.map((line, i) => (
-              <div key={i} style={{ color: line === "Training complete." ? "var(--green)" : "var(--text-muted)" }}>
-                {line === "Training complete." ? "" : "› "}{line}
+              <div key={i} style={{ color: line === "Training complete." ? "var(--ink-100)" : "var(--ink-200)" }}>
+                {line === "Training complete." ? "✓ " : "› "}{line}
               </div>
             ))}
             {training && <div style={{ color: "var(--accent)" }}>▌</div>}
@@ -275,11 +342,12 @@ export default function AIModelTrainer() {
 
       {/* ── Step 3: Results ───────────────────────────────────────────────── */}
       {step === "done" && result && (
-        <div className="card card-md mb2">
+        <div className="card ai-response mb2">
           <div className="section-title mb1">Step 3 — Results</div>
 
-          <div className="alert alert-success mb2">
-            Best model: <strong>{result.best_model}</strong> — trained on <strong>{result.data_used}</strong>
+          <div className="ai-note mb2">
+            Best model: <strong style={{ color: "var(--ink-950)" }}>{result.best_model}</strong>
+            {" — "}trained on <strong style={{ color: "var(--ink-950)" }}>{result.data_used}</strong>
           </div>
 
           {/* Metrics */}
@@ -314,7 +382,7 @@ export default function AIModelTrainer() {
             )}
             {result.metrics?.r2 != null && (
               <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--green)" }}>{result.metrics.r2}</div>
+                <div className="stat-value">{result.metrics.r2}</div>
                 <div className="stat-label">R² Score</div>
               </div>
             )}
@@ -326,7 +394,7 @@ export default function AIModelTrainer() {
             )}
             {result.metrics?.silhouette_score != null && (
               <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--green)" }}>{result.metrics.silhouette_score}</div>
+                <div className="stat-value">{result.metrics.silhouette_score}</div>
                 <div className="stat-label">Silhouette Score</div>
               </div>
             )}
@@ -366,7 +434,7 @@ export default function AIModelTrainer() {
                               )}
                               <td>
                                 {name === result.best_model
-                                  ? <span className="badge badge-green">Best</span>
+                                  ? <span className="badge badge-gray">Best</span>
                                   : <span className="badge badge-gray">Evaluated</span>}
                               </td>
                             </>
@@ -385,20 +453,16 @@ export default function AIModelTrainer() {
               <div className="section-title mb1">Feature Importance (Top 10)</div>
               <div className="table-wrap mb2">
                 <table>
-                  <thead><tr><th>Feature</th><th>Importance</th><th>Visual</th></tr></thead>
+                  <thead><tr><th>Feature</th><th>Importance</th><th>Share</th></tr></thead>
                   <tbody>
                     {Object.entries(result.feature_importance).slice(0, 10).map(([col, val]) => {
                       const max = Object.values(result.feature_importance)[0];
-                      const pct = max > 0 ? (val / max) * 100 : 0;
+                      const pct = max > 0 ? Math.round((val / max) * 1000) / 10 : 0;
                       return (
                         <tr key={col}>
                           <td><strong>{col}</strong></td>
-                          <td><code>{val}</code></td>
-                          <td style={{ width: 140 }}>
-                            <div className="progress">
-                              <div className="progress-bar progress-blue" style={{ width: `${pct}%` }} />
-                            </div>
-                          </td>
+                          <td className="pct-value">{val}</td>
+                          <td className="pct-value">{pct}%</td>
                         </tr>
                       );
                     })}

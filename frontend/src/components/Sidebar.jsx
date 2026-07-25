@@ -25,7 +25,7 @@ export default function Sidebar({ collapsed = false, onToggle }) {
     <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar-brand">
         <h1>{collapsed ? "DP" : "DataPrep"}</h1>
-        {!collapsed && <p>ML Dataset Platform</p>}
+        {!collapsed && <p>Prep · Train · Monitor</p>}
       </div>
 
       <nav className="sidebar-nav">

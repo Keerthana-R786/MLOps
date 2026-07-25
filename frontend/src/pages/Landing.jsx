@@ -2,12 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const features = [
-  { n: "01", title: "Upload",        desc: "Upload any CSV dataset up to 50 MB" },
-  { n: "02", title: "Profile",       desc: "Automatic statistical analysis and issue detection" },
-  { n: "03", title: "Preprocess",    desc: "Missing values, duplicates, outliers, type inference" },
-  { n: "04", title: "Quality Score", desc: "Weighted quality score before and after cleaning" },
-  { n: "05", title: "Report",        desc: "Downloadable PDF report and cleaned dataset" },
-  { n: "06", title: "Tracking",      desc: "MLflow experiment tracking for every run" },
+  { n: "01", title: "Dataset Prep",     desc: "Upload, profile, and repair raw CSVs into ML-ready data" },
+  { n: "02", title: "Quality & Drift",  desc: "Score data quality, export reports, and watch for drift" },
+  { n: "03", title: "Experiment Track", desc: "Log every preprocessing run in MLflow with full audit trail" },
+  { n: "04", title: "AI Model Trainer", desc: "Describe your goal — AI picks the problem type, features, and models" },
+  { n: "05", title: "Train & Compare",  desc: "Train multiple models, evaluate metrics, and select the best one" },
+  { n: "06", title: "Predict Ready",    desc: "Download a trained model (.pkl) ready for prediction pipelines" },
 ];
 
 const fadeUp = (delay = 0) => ({
@@ -46,20 +46,20 @@ export default function Landing() {
         <div className="hero-glow" aria-hidden="true" />
 
         <motion.div className="hero-kicker" {...fadeUp(0)}>
-          End-to-End Dataset Repair &amp; MLOps Platform
+          Dataset Repair · AI Model Training · MLOps
         </motion.div>
 
         <motion.h1 className="hero-heading" {...fadeUp(0.08)}>
-          <span className="hero-heading-line">Transform</span>
+          <span className="hero-heading-line">From Raw Data</span>
           <span className="hero-heading-line">
-            Raw Data Into <span className="text-gradient">Trusted Insights.</span>
+            To <span className="text-gradient">Trained Models.</span>
           </span>
         </motion.h1>
 
         <motion.p className="hero-desc" {...fadeUp(0.16)}>
-          Upload a raw CSV, get an instant statistical profile, repair missing values,
-          duplicates and outliers, then track every run in MLflow and monitor data drift —
-          all the way to a production-ready dataset and downloadable quality report.
+          Clean and score your datasets, then go further — describe what you want to predict
+          and let the AI Model Trainer choose features, train models, and deliver a downloadable
+          predictor. Two core modules, one platform: clean data and train models.
         </motion.p>
 
         <motion.div className="hero-cta-row" {...fadeUp(0.22)}>
@@ -82,11 +82,11 @@ export default function Landing() {
       >
         <motion.div className="landing-section-label" variants={itemReveal}>Core Modules</motion.div>
         <motion.h2 className="landing-section-title" variants={itemReveal}>
-          Everything you need to ship clean data
+          Clean data. Train models. Ship predictions.
         </motion.h2>
         <motion.p className="landing-section-desc" variants={itemReveal}>
-          One pipeline from raw CSV to a production-ready, ML-safe dataset — with a full audit
-          trail of every change made along the way.
+          Dataset Prep gets your CSV production-ready. AI Model Trainer turns that data into a
+          trained prediction model — guided by your project description, not just hardcoded rules.
         </motion.p>
 
         <div className="grid3 landing-module-grid">

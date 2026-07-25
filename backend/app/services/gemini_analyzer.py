@@ -30,10 +30,11 @@ def analyze_project(prompt: str, columns: list, sample_rows: list, dtypes: dict)
     ])
 
     system_msg = """You are a senior ML engineer. You will receive:
-1. A developer's project description
+1. A developer's project description (what they want to build / predict)
 2. Dataset column names, data types, and sample values
 
-Your job is to return a precise JSON configuration for training the best ML model.
+First, judge whether this dataset can support the developer's request.
+Then return a precise JSON configuration for training.
 Return ONLY raw JSON — no markdown, no explanation, no code fences. Just the JSON object."""
 
     user_msg = f"""Developer's project description:
@@ -44,7 +45,12 @@ Dataset columns with dtypes and sample values:
 
 Return a JSON object with exactly these fields:
 {{
-  "domain": "short domain label e.g. Healthcare / Fraud Detection / Real Estate",
+  "suitable": true or false,
+  "suitability_summary": "1 short sentence: either confirm fit, or say clearly this dataset is not suitable for the request",
+  "mismatch_reason": "if suitable=false, explain why in 1-2 sentences; otherwise empty string",
+  "what_you_need": ["if suitable=false, list concrete fields/data the user needs e.g. 'glucose level', 'BMI', 'diabetes diagnosis label'; otherwise []"],
+  "dataset_has": ["short labels for what this dataset actually contains, based on columns/samples"],
+  "domain": "short domain label e.g. Healthcare / Fraud Detection / Real Estate / Employee Analytics",
   "problem_type": "one of: binary_classification | multiclass_classification | regression | clustering",
   "target_column": "exact column name to predict — must exactly match one column name above, or null for clustering",
   "drop_columns": ["list of column names that are IDs, primary keys, names, emails — useless for prediction"],
@@ -52,11 +58,17 @@ Return a JSON object with exactly these fields:
   "handle_imbalance": true or false,
   "evaluation_metric": "primary metric: f1_score | accuracy | rmse | r2 | silhouette",
   "models_to_train": ["2 to 3 model class names — choose from: RandomForestClassifier, XGBClassifier, LogisticRegression, SVC, RandomForestRegressor, XGBRegressor, LinearRegression, Ridge, KMeans, DBSCAN"],
-  "reasoning": ["3 to 5 short sentences explaining why you chose this configuration based on the actual data"],
+  "reasoning": ["3 to 5 short sentences explaining the configuration based on the actual data"],
   "preprocessing_notes": "any domain-specific preprocessing advice based on the actual column values"
 }}
 
-Critical rules:
+Critical suitability rules:
+- Set suitable=false when the dataset topic/columns clearly do NOT match the developer's request (e.g. employee HR data for diabetes prediction, housing prices for churn prediction)
+- When suitable=false, still fill domain/problem_type/columns as best-effort for this dataset, but make suitability_summary and what_you_need very clear
+- what_you_need must list the kinds of columns/labels the user should upload instead
+- dataset_has must describe what is actually in THIS file
+
+Critical training rules:
 - target_column MUST exactly match one column name from the list provided, or null
 - feature_columns MUST only contain column names from the list, excluding target and drop columns
 - Look at the actual sample values to infer what each column contains
@@ -70,7 +82,7 @@ Critical rules:
                 {"role": "system", "content": system_msg},
                 {"role": "user",   "content": user_msg},
             ],
-            max_tokens=1024,
+            max_tokens=1400,
             temperature=0.1,
         )
 
@@ -100,6 +112,17 @@ Critical rules:
         # Validate drop columns
         config["drop_columns"] = [c for c in config.get("drop_columns", []) if c in columns]
 
+        # Normalize suitability fields
+        config["suitable"] = bool(config.get("suitable", True))
+        config["suitability_summary"] = config.get("suitability_summary") or (
+            "This dataset appears suitable for your request."
+            if config["suitable"]
+            else "This dataset is not suitable for your request."
+        )
+        config["mismatch_reason"] = config.get("mismatch_reason") or ""
+        config["what_you_need"] = config.get("what_you_need") or []
+        config["dataset_has"] = config.get("dataset_has") or list(columns)[:12]
+
         return {"success": True, "config": config}
 
     except json.JSONDecodeError as e:
@@ -109,4 +132,4 @@ Critical rules:
             "raw":     raw if "raw" in dir() else ""
         }
     except Exception as e:
-        return {"success": False, "error": f"Groq API error: {str(e)}"}
+        return {"success": False, "error": f"AI analysis error: {str(e)}"}
