@@ -5,15 +5,16 @@ import Sidebar from "./components/Sidebar";
 import Starfield from "./components/Starfield";
 import PageTransition from "./components/PageTransition";
 import SplashScreen from "./components/SplashScreen";
-import Landing      from "./pages/Landing";
-import Login        from "./pages/Login";
-import Dashboard    from "./pages/Dashboard";
-import Upload       from "./pages/Upload";
-import Analysis     from "./pages/Analysis";
-import RepairResult from "./pages/RepairResult";
-import QualityReport from "./pages/QualityReport";
-import Monitoring   from "./pages/Monitoring";
-import Settings     from "./pages/Settings";
+import Landing        from "./pages/Landing";
+import Login          from "./pages/Login";
+import Dashboard      from "./pages/Dashboard";
+import Upload         from "./pages/Upload";
+import Analysis       from "./pages/Analysis";
+import RepairResult   from "./pages/RepairResult";
+import QualityReport  from "./pages/QualityReport";
+import AIModelTrainer from "./pages/AIModelTrainer";
+import Monitoring     from "./pages/Monitoring";
+import Settings       from "./pages/Settings";
 
 const WithSidebar = ({ children }) => {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("sidebarCollapsed") === "1");
@@ -48,7 +49,8 @@ function AnimatedRoutes() {
         <Route path="/upload"    element={<WithSidebar><PageTransition><Upload /></PageTransition></WithSidebar>} />
         <Route path="/analysis"  element={<WithSidebar><PageTransition><Analysis /></PageTransition></WithSidebar>} />
         <Route path="/repair"    element={<WithSidebar><PageTransition><RepairResult /></PageTransition></WithSidebar>} />
-        <Route path="/quality"   element={<WithSidebar><PageTransition><QualityReport /></PageTransition></WithSidebar>} />
+        <Route path="/quality"    element={<WithSidebar><PageTransition><QualityReport /></PageTransition></WithSidebar>} />
+        <Route path="/ai-trainer" element={<WithSidebar><PageTransition><AIModelTrainer /></PageTransition></WithSidebar>} />
         <Route path="/monitoring" element={<WithSidebar><PageTransition><Monitoring /></PageTransition></WithSidebar>} />
         <Route path="/settings"  element={<WithSidebar><PageTransition><Settings /></PageTransition></WithSidebar>} />
       </Routes>

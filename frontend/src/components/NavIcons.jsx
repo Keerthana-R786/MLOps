@@ -48,6 +48,14 @@ export const SettingsIcon = ({ size = 15 }) => (
   </svg>
 );
 
+export const AITrainerIcon = ({ size = 15 }) => (
+  <svg viewBox="0 0 20 20" width={size} height={size} {...common}>
+    <circle cx="10" cy="7.5" r="3" />
+    <path d="M5 17c0-3.3 2-5 5-5s5 1.7 5 5" />
+    <path d="M15.5 4.5l1.5-1.5M15.5 10.5l1.5 1.5M3.5 4.5 2 3M3.5 10.5 2 12" />
+  </svg>
+);
+
 export const ChevronIcon = ({ size = 14 }) => (
   <svg viewBox="0 0 20 20" width={size} height={size} {...common}>
     <path d="M12.5 5 7.5 10l5 5" />

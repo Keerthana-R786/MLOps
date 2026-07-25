@@ -4,3 +4,5 @@
 /pytest_profile.csv
 /pytest_repair.csv
 /dirty_sales_data.csv
+/dataset_full.csv
+/dataset_small.csv

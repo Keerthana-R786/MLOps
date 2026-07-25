@@ -2,17 +2,18 @@ import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   DashboardIcon, UploadIcon, AnalysisIcon, PreprocessIcon,
-  QualityIcon, MonitoringIcon, SettingsIcon, ChevronIcon,
+  QualityIcon, AITrainerIcon, MonitoringIcon, SettingsIcon, ChevronIcon,
 } from "./NavIcons";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard",     Icon: DashboardIcon },
-  { to: "/upload",    label: "Upload",        Icon: UploadIcon },
-  { to: "/analysis",  label: "Analysis",      Icon: AnalysisIcon },
-  { to: "/repair",    label: "Preprocessing", Icon: PreprocessIcon },
-  { to: "/quality",   label: "Quality Report",Icon: QualityIcon },
-  { to: "/monitoring",label: "Monitoring",    Icon: MonitoringIcon },
-  { to: "/settings",  label: "Settings",      Icon: SettingsIcon },
+  { to: "/dashboard",  label: "Dashboard",        Icon: DashboardIcon },
+  { to: "/upload",     label: "Upload",            Icon: UploadIcon },
+  { to: "/analysis",   label: "Analysis",          Icon: AnalysisIcon },
+  { to: "/repair",     label: "Preprocessing",     Icon: PreprocessIcon },
+  { to: "/quality",    label: "Quality Report",    Icon: QualityIcon },
+  { to: "/ai-trainer", label: "AI Model Trainer",  Icon: AITrainerIcon },
+  { to: "/monitoring", label: "Monitoring",        Icon: MonitoringIcon },
+  { to: "/settings",   label: "Settings",          Icon: SettingsIcon },
 ];
 
 const MotionNavLink = motion.create(NavLink);
