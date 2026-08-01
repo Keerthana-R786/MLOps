@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
 const scoreColor = (s) => s >= 90 ? "var(--green)" : s >= 75 ? "var(--accent)" : s >= 60 ? "var(--yellow)" : "var(--red)";
 const scoreBarClass = (s) => s >= 90 ? "progress-green" : s >= 75 ? "progress-blue" : s >= 60 ? "progress-yellow" : "progress-red";
@@ -8,12 +9,13 @@ const scoreBarClass = (s) => s >= 90 ? "progress-green" : s >= 75 ? "progress-bl
 export default function QualityReport() {
   const navigate  = useNavigate();
   const filename  = localStorage.getItem("uploadedFile");
-  const [data,    setData]    = useState(null);
+  const [data,    setData]    = usePersistentState(cacheKey("quality", filename), null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
   useEffect(() => {
     if (!filename) { setError("No file uploaded."); return; }
+    if (data) return;
     load();
   }, []);
 

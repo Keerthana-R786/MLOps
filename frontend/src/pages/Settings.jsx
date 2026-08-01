@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearPersistedState } from "../hooks/usePersistentState";
 
 export default function Settings() {
   const navigate   = useNavigate();
@@ -14,6 +15,7 @@ export default function Settings() {
 
   const logout = () => {
     localStorage.clear();
+    clearPersistedState();
     navigate("/");
   };
 

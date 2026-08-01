@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "../api";
+import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
 const safeNum = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
 
@@ -11,8 +12,8 @@ const stageBadge = (stage) => {
 };
 
 export default function Monitoring() {
-  const [stats,   setStats]   = useState(null);
-  const [models,  setModels]  = useState(null);
+  const [stats,   setStats]   = usePersistentState(cacheKey("monitoring:stats"), null);
+  const [models,  setModels]  = usePersistentState(cacheKey("monitoring:models"), null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
 

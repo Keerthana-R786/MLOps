@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
 const scoreColor = (v) => v >= 90 ? "var(--green)" : v >= 60 ? "var(--yellow)" : "var(--red)";
 const safeNum = (v, d = 4) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
@@ -8,12 +9,13 @@ const safeNum = (v, d = 4) => (v == null || isNaN(v)) ? "—" : Number(v).toFixe
 export default function Analysis() {
   const navigate  = useNavigate();
   const filename  = localStorage.getItem("uploadedFile");
-  const [data,    setData]    = useState(null);
+  const [data,    setData]    = usePersistentState(cacheKey("analysis", filename), null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
   useEffect(() => {
     if (!filename) { setError("No file uploaded yet."); return; }
+    if (data) return;
     load();
   }, []);
 

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { usePersistentState, cacheKey, clearPersistedState } from "../hooks/usePersistentState";
 
 export default function Upload() {
   const navigate  = useNavigate();
@@ -8,7 +9,7 @@ export default function Upload() {
   const [file,     setFile]     = useState(null);
   const [dragging, setDragging] = useState(false);
   const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
+  const [result,   setResult]   = usePersistentState(cacheKey("upload"), null);
   const [error,    setError]    = useState("");
 
   const handleFile = (f) => {
@@ -27,6 +28,8 @@ export default function Upload() {
     form.append("file", file);
     try {
       const res = await API.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      // A new upload invalidates every page derived from the previous dataset.
+      clearPersistedState();
       setResult(res.data);
       localStorage.setItem("uploadedFile", res.data.filename);
     } catch (e) {

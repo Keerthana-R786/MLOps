@@ -1,18 +1,25 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
 export default function AIModelTrainer() {
   const navigate   = useNavigate();
   const filename   = localStorage.getItem("uploadedFile");
-  const [prompt,   setPrompt]   = useState("");
-  const [analysis, setAnalysis] = useState(null);
+  const [prompt,   setPrompt]   = usePersistentState(cacheKey("trainer:prompt", filename), "");
+  const [analysis, setAnalysis] = usePersistentState(cacheKey("trainer:analysis", filename), null);
   const [training, setTraining] = useState(false);
-  const [result,   setResult]   = useState(null);
+  const [result,   setResult]   = usePersistentState(cacheKey("trainer:result", filename), null);
   const [error,    setError]    = useState("");
-  const [step,     setStep]     = useState("idle"); // idle | analyzing | reviewed | training | done
-  const [logs,     setLogs]     = useState([]);
+  const [step,     setStep]     = usePersistentState(cacheKey("trainer:step", filename), "idle"); // idle | analyzing | reviewed | training | done
+  const [logs,     setLogs]     = usePersistentState(cacheKey("trainer:logs", filename), []);
   const logRef = useRef(null);
+
+  // A request cannot survive a page change, so never restore an in-flight step.
+  useEffect(() => {
+    if (step === "analyzing") setStep(analysis ? "reviewed" : "idle");
+    else if (step === "training") setStep(result ? "done" : "reviewed");
+  }, []);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;

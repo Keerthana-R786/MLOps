@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
 export default function RepairResult() {
   const navigate = useNavigate();
   const filename = localStorage.getItem("uploadedFile");
-  const [strategy, setStrategy] = useState("clip");
+  const [strategy, setStrategy] = usePersistentState(cacheKey("repair:strategy", filename), "clip");
   const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
+  const [result,   setResult]   = usePersistentState(cacheKey("repair", filename), null);
   const [error,    setError]    = useState("");
 
   if (!filename) {

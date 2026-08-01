@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { FileIcon } from "../components/NavIcons";
+import { usePersistentState, cacheKey, clearPersistedState } from "../hooks/usePersistentState";
 
 const safeNum = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
 
 export default function Dashboard() {
   const navigate     = useNavigate();
   const [online,     setOnline]  = useState(null);
-  const [stats,      setStats]   = useState(null);
+  const [stats,      setStats]   = usePersistentState(cacheKey("monitoring:stats"), null);
   const uploadedFile = localStorage.getItem("uploadedFile");
 
   useEffect(() => {
@@ -45,7 +46,11 @@ export default function Dashboard() {
             <span className="file-chip-name">{uploadedFile}</span>
             <button
               className="file-chip-clear"
-              onClick={() => { localStorage.removeItem("uploadedFile"); window.location.reload(); }}
+              onClick={() => {
+                localStorage.removeItem("uploadedFile");
+                clearPersistedState();
+                window.location.reload();
+              }}
             >
               Clear
             </button>
