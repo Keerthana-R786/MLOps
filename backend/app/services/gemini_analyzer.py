@@ -1,7 +1,7 @@
 """
 gemini_analyzer.py
-Uses Groq (Llama 3.3 70B) to intelligently analyze the developer's project
-description and dataset to determine the optimal ML training configuration.
+Uses Groq to analyze the developer's project description and dataset
+and return an ML training configuration.
 """
 
 import json
@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
-MODEL  = "llama-3.3-70b-versatile"
+# llama-3.3-70b-versatile was removed from Groq on 2026-08-16.
+MODEL  = "openai/gpt-oss-120b"
 
 
 def analyze_project(prompt: str, columns: list, sample_rows: list, dtypes: dict) -> dict:

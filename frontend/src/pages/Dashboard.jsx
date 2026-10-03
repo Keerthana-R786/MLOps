@@ -36,7 +36,7 @@ export default function Dashboard() {
         <div className={`status-pill status-pill-${online === null ? "pending" : online ? "online" : "offline"}`}>
           <span className="status-dot" />
           {online === null && "Connecting to backend…"}
-          {online === true  && <>Backend Connected <span className="status-pill-sub">localhost:8000</span></>}
+          {online === true  && <>Backend Connected <span className="status-pill-sub">127.0.0.1:8000</span></>}
           {online === false && "Backend offline — start uvicorn on :8000"}
         </div>
 
@@ -173,9 +173,9 @@ export default function Dashboard() {
         </div>
         <p className="mt1 text-sm">
           Interactive docs:{" "}
-          <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer"
+          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer"
              style={{ color: "var(--accent)" }}>
-            http://localhost:8000/docs
+            http://127.0.0.1:8000/docs
           </a>
         </p>
       </div>

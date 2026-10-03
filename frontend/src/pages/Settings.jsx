@@ -5,7 +5,7 @@ import { clearPersistedState } from "../hooks/usePersistentState";
 export default function Settings() {
   const navigate   = useNavigate();
   const [saved,    setSaved]    = useState(false);
-  const [apiUrl,   setApiUrl]   = useState(localStorage.getItem("apiUrl") || "http://localhost:8000");
+  const [apiUrl,   setApiUrl]   = useState(localStorage.getItem("apiUrl") || "http://127.0.0.1:8000");
 
   const save = () => {
     localStorage.setItem("apiUrl", apiUrl);

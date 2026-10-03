@@ -497,7 +497,7 @@ export default function AIModelTrainer() {
                 className="btn btn-primary"
                 onClick={() => {
                   const a = document.createElement("a");
-                  a.href     = `http://localhost:8000/ai/download/model/${result.model_filename}`;
+                  a.href     = `http://127.0.0.1:8000/ai/download/model/${result.model_filename}`;
                   a.download = result.model_filename;
                   document.body.appendChild(a);
                   a.click();

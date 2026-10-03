@@ -40,7 +40,7 @@ export default function QualityReport() {
       csv:  { url: `/report/download/csv/${filename}`,  name: `${base}_cleaned.csv` },
     };
     const a = document.createElement("a");
-    a.href     = `http://localhost:8000${map[type].url}`;
+    a.href     = `http://127.0.0.1:8000${map[type].url}`;
     a.download = map[type].name;
     document.body.appendChild(a);
     a.click();
