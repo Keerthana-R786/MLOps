@@ -3,44 +3,6 @@ import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { usePersistentState, cacheKey } from "../hooks/usePersistentState";
 
-const MOCK_RESULT = {
-  quality_before: 62.4,
-  quality_after: 91.8,
-  improvement: 29.4,
-  mlflow: {
-    run_id: "7f3a9c2e1b84d056",
-    experiment: "Dataset-Repair-Pipeline",
-    execution_time: 18.6,
-  },
-  result: {
-    original_shape: { rows: 12480, columns: 14 },
-    cleaned_shape: { rows: 12106, columns: 11 },
-    rows_removed: 374,
-    columns_removed: 3,
-    outlier_strategy: "clip",
-    audit: {
-      structure: { empty_columns_dropped: ["notes"], empty_rows_dropped: 42 },
-      type_inference: {
-        type_changes: {
-          age: "object → int",
-          glucose: "object → float",
-          smoker: "object → bool",
-        },
-      },
-      duplicates: { duplicates_removed: 186 },
-      missing_values: {
-        numerical_imputed: ["bmi", "blood_pressure", "insulin"],
-        categorical_imputed: ["gender"],
-        columns_dropped: ["legacy_id"],
-      },
-      outliers: { columns_clipped: ["glucose", "bmi", "insulin"] },
-      low_variance: { constant_columns_dropped: ["record_status"], near_constant_dropped: [] },
-      duplicate_columns: { duplicate_columns_dropped: ["glucose_copy"] },
-      label_errors: { skipped: false, label_errors_found: 27, target_column: "outcome" },
-    },
-  },
-};
-
 export default function RepairResult() {
   const navigate = useNavigate();
   const filename = localStorage.getItem("uploadedFile");
@@ -115,16 +77,11 @@ export default function RepairResult() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      {(() => {
-        const live = result && !loading;
-        const shown = live ? result : MOCK_RESULT;
-        const r = shown.result;
+      {result && !loading && (() => {
+        const r = result.result;
         const audit = r?.audit;
         return (
           <>
-            {!live && (
-              <div className="alert alert-info">Sample preview. These figures stand in until the pipeline finishes.</div>
-            )}
             <div className="alert alert-success">Preprocessing complete. Dataset is ready for model training.</div>
 
             {/* Shape summary */}
@@ -148,12 +105,12 @@ export default function RepairResult() {
                 {r.columns_removed > 0 && <div className="stat-sub text-yellow">−{r.columns_removed} removed</div>}
               </div>
               <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--green)" }}>{shown.quality_after}%</div>
+                <div className="stat-value" style={{ color: "var(--green)" }}>{result.quality_after}%</div>
                 <div className="stat-label">Quality After</div>
-                <div className="stat-sub">was {shown.quality_before}%</div>
+                <div className="stat-sub">was {result.quality_before}%</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--green)" }}>+{shown.improvement}%</div>
+                <div className="stat-value" style={{ color: "var(--green)" }}>+{result.improvement}%</div>
                 <div className="stat-label">Improvement</div>
               </div>
             </div>
@@ -281,15 +238,15 @@ export default function RepairResult() {
             )}
 
             {/* MLflow */}
-            {shown.mlflow && shown.mlflow.run_id !== "error" && (
+            {result.mlflow && result.mlflow.run_id !== "error" && (
               <div className="card mt1">
                 <div className="section-title mb1">MLflow Run</div>
                 <div className="table-wrap">
                   <table>
                     <tbody>
-                      <tr><td className="text-muted">Run ID</td><td><code>{shown.mlflow.run_id}</code></td></tr>
-                      <tr><td className="text-muted">Experiment</td><td>{shown.mlflow.experiment}</td></tr>
-                      <tr><td className="text-muted">Execution time</td><td>{shown.mlflow.execution_time}s</td></tr>
+                      <tr><td className="text-muted">Run ID</td><td><code>{result.mlflow.run_id}</code></td></tr>
+                      <tr><td className="text-muted">Experiment</td><td>{result.mlflow.experiment}</td></tr>
+                      <tr><td className="text-muted">Execution time</td><td>{result.mlflow.execution_time}s</td></tr>
                     </tbody>
                   </table>
                 </div>
